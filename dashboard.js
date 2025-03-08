@@ -1161,6 +1161,9 @@ async function generateAIQuestions(difficulty) {
 
       // تنظيف النص واستخراج JSON
       let cleanedContent = content.trim();
+      
+      // إزالة علامات التنسيق للماركداون (أي إزالة ```json و ```)
+      cleanedContent = cleanedContent.replace(/```json/g, '').replace(/```/g, '');
 
       // محاولة استخراج كود JSON
       let jsonData;
@@ -1560,8 +1563,30 @@ async function generateAllCategories() {
 
       const data = await response.json();
       let content = data.candidates[0].content.parts[0].text;
-      let jsonData = JSON.parse(content.trim());
-      allQuestions.push(...jsonData);
+      
+      // إزالة علامات التنسيق للماركداون (أي إزالة ```json و ```)
+      content = content.trim().replace(/```json/g, '').replace(/```/g, '');
+      
+      // محاولة استخراج كود JSON
+      try {
+        // محاولة العثور على قوس البداية والنهاية
+        const startIndex = content.indexOf('[');
+        const endIndex = content.lastIndexOf(']') + 1;
+        
+        let jsonString;
+        if (startIndex >= 0 && endIndex > startIndex) {
+          jsonString = content.substring(startIndex, endIndex);
+        } else {
+          jsonString = content;
+        }
+        
+        const jsonData = JSON.parse(jsonString);
+        allQuestions.push(...jsonData);
+      } catch (jsonError) {
+        console.error("JSON parsing error in generateAllCategories:", jsonError);
+        console.error("Content that failed to parse:", content);
+        throw new Error('تعذر تحليل البيانات من الذكاء الاصطناعي - تنسيق JSON غير صالح');
+      }
     }
 
     if (addDirectly) {

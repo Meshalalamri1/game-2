@@ -1294,31 +1294,85 @@ function saveAIQuestionsDirectly(questions, difficulty, topic) {
     // عداد للأسئلة التي تم إضافتها
     let addedQuestions = 0;
 
-    // إضافة الأسئلة إلى الموضوع
-    processedQuestions.forEach(q => {
-      // التحقق من عدد الأسئلة الموجودة بنفس قيمة النقاط
-      const pointQuestions = gameData.topics[topicIndex].questions.filter(existing => existing.points === difficulty);
-
-      if (pointQuestions.length < 2) {
-        const newQuestion = {
-          points: difficulty,
-          text: q.text,
-          answer: q.answer,
-          answered: false,
-          mediaType: "",
-          mediaUrl: ""
-        };
-
-        // إذا كان السؤال يحتوي على صورة، أضفها
-        if (q.imageUrl) {
-          newQuestion.mediaType = "image";
-          newQuestion.mediaUrl = q.imageUrl;
+    // جميع الفئات - difficulty هو null عندما نولد أسئلة لجميع الفئات
+    if (difficulty === null) {
+      // تصنيف الأسئلة حسب صعوبتها (النقاط)
+      const pointsCategories = [200, 400, 600];
+      
+      // لكل فئة نقاط
+      for (const points of pointsCategories) {
+        // الأسئلة المولدة لهذه الفئة
+        const questionsForCategory = processedQuestions.filter(q => q.points === points);
+        
+        // التحقق من عدد الأسئلة الموجودة بقيمة النقاط هذه
+        const existingPointQuestions = gameData.topics[topicIndex].questions.filter(
+          existing => existing.points === points
+        );
+        
+        // عدد الأسئلة التي يمكن إضافتها (حد أقصى سؤالين لكل فئة)
+        const availableSlots = 2 - existingPointQuestions.length;
+        
+        // إضافة الأسئلة المتاحة فقط
+        if (availableSlots > 0 && questionsForCategory.length > 0) {
+          const questionsToAdd = questionsForCategory.slice(0, availableSlots);
+          
+          questionsToAdd.forEach(q => {
+            const newQuestion = {
+              points: points,
+              text: q.text,
+              answer: q.answer,
+              answered: false,
+              mediaType: "",
+              mediaUrl: ""
+            };
+            
+            // إذا كان السؤال يحتوي على صورة، أضفها
+            if (q.imageUrl) {
+              newQuestion.mediaType = "image";
+              newQuestion.mediaUrl = q.imageUrl;
+            }
+            
+            gameData.topics[topicIndex].questions.push(newQuestion);
+            addedQuestions++;
+          });
         }
-
-        gameData.topics[topicIndex].questions.push(newQuestion);
-        addedQuestions++;
       }
-    });
+    } 
+    // فئة واحدة محددة - difficulty هو قيمة النقاط
+    else {
+      // التحقق من عدد الأسئلة الموجودة بنفس قيمة النقاط
+      const pointQuestions = gameData.topics[topicIndex].questions.filter(
+        existing => existing.points === difficulty
+      );
+
+      // حساب عدد الأسئلة التي يمكن إضافتها
+      const availableSlots = 2 - pointQuestions.length;
+      
+      if (availableSlots > 0) {
+        // إضافة ما يصل إلى العدد المتاح من الأسئلة
+        const questionsToAdd = processedQuestions.slice(0, availableSlots);
+        
+        questionsToAdd.forEach(q => {
+          const newQuestion = {
+            points: difficulty,
+            text: q.text,
+            answer: q.answer,
+            answered: false,
+            mediaType: "",
+            mediaUrl: ""
+          };
+
+          // إذا كان السؤال يحتوي على صورة، أضفها
+          if (q.imageUrl) {
+            newQuestion.mediaType = "image";
+            newQuestion.mediaUrl = q.imageUrl;
+          }
+
+          gameData.topics[topicIndex].questions.push(newQuestion);
+          addedQuestions++;
+        });
+      }
+    }
 
     // حفظ البيانات وتحديث واجهة المستخدم
     saveGameData();
@@ -1329,7 +1383,7 @@ function saveAIQuestionsDirectly(questions, difficulty, topic) {
     if (addedQuestions > 0) {
       alert(`تم إضافة ${addedQuestions} سؤال بنجاح في موضوع "${topic}"`);
     } else {
-      alert(`لم يتم إضافة أي أسئلة جديدة. هناك بالفعل سؤالان بقيمة ${difficulty} نقطة في هذا الموضوع.`);
+      alert(`لم يتم إضافة أي أسئلة جديدة. قد تكون هناك أسئلة كافية بالفعل في هذا الموضوع.`);
     }
 
     // تحديث واجهة المستخدم
@@ -1538,63 +1592,107 @@ async function generateAllCategories() {
            ]`;
       }
 
-
-      const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                { text: prompt }
-              ]
-            }
-          ],
-          generationConfig: {
-            temperature: 0.7,
-            topK: 40,
-            topP: 0.95,
-            maxOutputTokens: 1024
-          }
-        })
-      });
-
-      const data = await response.json();
-      let content = data.candidates[0].content.parts[0].text;
-      
-      // إزالة علامات التنسيق للماركداون (أي إزالة ```json و ```)
-      content = content.trim().replace(/```json/g, '').replace(/```/g, '');
-      
-      // محاولة استخراج كود JSON
       try {
-        // محاولة العثور على قوس البداية والنهاية
-        const startIndex = content.indexOf('[');
-        const endIndex = content.lastIndexOf(']') + 1;
+        console.log("Sending prompt to Gemini API:", prompt);
         
-        let jsonString;
-        if (startIndex >= 0 && endIndex > startIndex) {
-          jsonString = content.substring(startIndex, endIndex);
-        } else {
-          jsonString = content;
+        const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  { text: prompt }
+                ]
+              }
+            ],
+            generationConfig: {
+              temperature: 0.7,
+              topK: 40,
+              topP: 0.95,
+              maxOutputTokens: 1024
+            }
+          })
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("API response error:", errorText);
+          throw new Error(`خطأ في استجابة API: ${response.status}`);
         }
+
+        const data = await response.json();
+        console.log("Raw API response:", data);
+
+        if (data.error) {
+          throw new Error(data.error.message || 'حدث خطأ في API');
+        }
+
+        // تحقق من وجود البيانات المطلوبة في الاستجابة
+        if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
+          throw new Error('استجابة غير مكتملة من واجهة برمجة Gemini');
+        }
+
+        // استخراج النص من استجابة Gemini
+        let content = '';
+        if (data.candidates[0].content.parts && data.candidates[0].content.parts.length > 0) {
+          content = data.candidates[0].content.parts[0].text || '';
+        }
+
+        console.log("Gemini API response content:", content);
         
-        const jsonData = JSON.parse(jsonString);
-        allQuestions.push(...jsonData);
-      } catch (jsonError) {
-        console.error("JSON parsing error in generateAllCategories:", jsonError);
-        console.error("Content that failed to parse:", content);
-        throw new Error('تعذر تحليل البيانات من الذكاء الاصطناعي - تنسيق JSON غير صالح');
+        // إزالة علامات التنسيق للماركداون (أي إزالة ```json و ```)
+        content = content.trim().replace(/```json/g, '').replace(/```/g, '');
+        
+        // محاولة استخراج كود JSON
+        try {
+          // محاولة العثور على قوس البداية والنهاية
+          const startIndex = content.indexOf('[');
+          const endIndex = content.lastIndexOf(']') + 1;
+          
+          let jsonString;
+          if (startIndex >= 0 && endIndex > startIndex) {
+            jsonString = content.substring(startIndex, endIndex);
+          } else {
+            jsonString = content;
+          }
+          
+          const jsonData = JSON.parse(jsonString);
+          
+          // إضافة النقاط لكل سؤال إذا لم تكن موجودة
+          const processedJsonData = jsonData.map(q => {
+            if (!q.points) {
+              return {...q, points: difficulty};
+            }
+            return q;
+          });
+          
+          allQuestions.push(...processedJsonData);
+        } catch (jsonError) {
+          console.error("JSON parsing error in generateAllCategories:", jsonError);
+          console.error("Content that failed to parse:", content);
+          throw new Error('تعذر تحليل البيانات من الذكاء الاصطناعي - تنسيق JSON غير صالح');
+        }
+
+      } catch (apiError) {
+        console.error(`Error generating questions for difficulty ${difficulty}:`, apiError);
+        // استمرار للصعوبة التالية حتى لو فشلت الحالية
       }
+    }
+
+    // التحقق من وجود أسئلة قبل متابعة العملية
+    if (allQuestions.length === 0) {
+      throw new Error('لم يتم توليد أي أسئلة. الرجاء المحاولة مرة أخرى.');
     }
 
     if (addDirectly) {
       saveAIQuestionsDirectly(allQuestions, null, topic);
-      document.getElementById('ai-questions-container').dataset.allCategories = true;
+      document.getElementById('ai-questions-container').dataset.allCategories = "true";
     } else {
       displayAIQuestions(allQuestions, null, topic);
-      document.getElementById('ai-questions-container').dataset.allCategories = true;
+      document.getElementById('ai-questions-container').dataset.allCategories = "true";
     }
   } catch (error) {
     console.error('خطأ في توليد الأسئلة:', error);

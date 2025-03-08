@@ -285,6 +285,7 @@ header {
   border: 1px solid #e9ecef;
   color: var(--success-color);
   font-weight: bold;
+  min-height: 60px; /* إضافة ارتفاع ثابت لمنع تحرك المحتوى */
 }
 
 .hidden {

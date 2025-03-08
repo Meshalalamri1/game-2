@@ -364,6 +364,10 @@ function startTimer() {
 
 // Reveal answer
 function revealAnswer() {
+  // التأكد من أن نص الإجابة موجود قبل إظهاره
+  if (currentQuestion && currentQuestion.question) {
+    answerText.textContent = currentQuestion.question.answer;
+  }
   answerText.classList.remove('hidden');
   showAnswerBtn.disabled = true;
 }

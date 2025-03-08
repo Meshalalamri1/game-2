@@ -1,3 +1,4 @@
+
 // DOM Elements
 const dashboardNav = document.querySelector('.dashboard-nav');
 const dashboardSections = document.querySelectorAll('.dashboard-section');
@@ -5,7 +6,6 @@ const dashboardSections = document.querySelectorAll('.dashboard-section');
 // Topic form elements
 const addTopicForm = document.getElementById('add-topic-form');
 const topicTitleInput = document.getElementById('topic-title');
-const topicImageInput = document.getElementById('topic-image');
 const topicsTable = document.getElementById('topics-table').querySelector('tbody');
 
 // Question form elements
@@ -30,7 +30,7 @@ const saveGameSettingsBtn = document.getElementById('save-game-settings');
 const resetScoresBtn = document.getElementById('reset-scores');
 const resetAnswersBtn = document.getElementById('reset-answers');
 const resetAllBtn = document.getElementById('reset-all');
-const restoreDefaultTopicsBtn = document.getElementById('restore-topics'); // Added button
+const restoreDefaultTopicsBtn = document.getElementById('restore-topics');
 
 // Game data
 let gameData = {
@@ -79,7 +79,8 @@ function loadGameData() {
       teams: [
         { id: 1, name: "فريق 1", score: 0 },
         { id: 2, name: "فريق 2", score: 0 }
-      ]
+      ],
+      activeTopics: []
     };
   }
 }
@@ -89,9 +90,9 @@ function saveGameData() {
   localStorage.setItem('gameData', JSON.stringify(gameData));
 }
 
-// Google Gemini API Key (يجب أن تضعها في مكان آمن في الإنتاج)
+// Google Gemini API Key
 const GEMINI_API_KEY = "AIzaSyAf-5Km13EuT5AtE8DHRHPsUEQd5b8pTWk";
-// Gemini API URL - استخدام الإصدار والنموذج الصحيح
+// Gemini API URL
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
 // Setup event listeners
@@ -159,6 +160,57 @@ function setupEventListeners() {
   document.getElementById('generate-hard').addEventListener('click', () => generateAIQuestions(600));
   document.getElementById('generate-all').addEventListener('click', generateAllCategories);
   document.getElementById('save-ai-questions').addEventListener('click', saveAIQuestions);
+  
+  // Media type selection
+  const mediaTypeSelect = document.getElementById('media-type');
+  const mediaUrlContainer = document.getElementById('media-url-container');
+  const mediaUploadInput = document.getElementById('media-upload');
+  const mediaUrlInput = document.getElementById('media-url');
+  const uploadStatus = document.getElementById('upload-status');
+
+  mediaTypeSelect.addEventListener('change', function() {
+    if (this.value) {
+      mediaUrlContainer.style.display = 'block';
+    } else {
+      mediaUrlContainer.style.display = 'none';
+    }
+  });
+
+  // Handle file upload and convert to Data URL
+  mediaUploadInput.addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file type based on selected media type
+    const mediaType = mediaTypeSelect.value;
+    let isValidType = false;
+
+    if (mediaType === 'image' && file.type.startsWith('image/')) {
+      isValidType = true;
+    } else if (mediaType === 'video' && file.type.startsWith('video/')) {
+      isValidType = true;
+    } else if (mediaType === 'audio' && file.type.startsWith('audio/')) {
+      isValidType = true;
+    }
+
+    if (!isValidType) {
+      alert(`الرجاء اختيار ملف من نوع ${mediaType}`);
+      return;
+    }
+
+    uploadStatus.textContent = 'جاري التحميل...';
+
+    const reader = new FileReader();
+    reader.onload = function(event) {
+      // Store the Data URL in the URL input
+      mediaUrlInput.value = event.target.result;
+      uploadStatus.textContent = 'تم التحميل بنجاح!';
+    };
+    reader.onerror = function() {
+      uploadStatus.textContent = 'حدث خطأ أثناء التحميل';
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 // Render topics table
@@ -201,6 +253,9 @@ function renderQuestionTopicSelect() {
     option.textContent = topic.title;
     questionTopicSelect.appendChild(option);
   });
+  
+  // Also update AI topic select
+  updateAITopicSelect();
 }
 
 // Render filter topic select
@@ -225,6 +280,10 @@ function renderQuestionsTable() {
   gameData.topics.forEach(topic => {
     if (selectedTopicId !== 'all' && topic.id.toString() !== selectedTopicId) {
       return;
+    }
+
+    if (!topic.questions) {
+      topic.questions = [];
     }
 
     topic.questions.forEach((question, qIndex) => {
@@ -309,6 +368,7 @@ function addTopic() {
   renderTopicsTable();
   renderQuestionTopicSelect();
   renderFilterTopicSelect();
+  renderGameManagement();
 }
 
 // Edit topic
@@ -336,6 +396,7 @@ function deleteTopic(topicId, confirm = true) {
   renderQuestionTopicSelect();
   renderFilterTopicSelect();
   renderQuestionsTable();
+  renderGameManagement();
 }
 
 // Add new question
@@ -355,15 +416,14 @@ function addQuestion() {
     return;
   }
 
-  // Validate URL format
-  if (mediaUrl && !isValidUrl(mediaUrl)) {
-    alert('الرجاء إدخال رابط صحيح للوسائط');
-    return;
-  }
-
   const topicIndex = gameData.topics.findIndex(t => t.id === topicId);
 
   if (topicIndex === -1) return;
+
+  // Ensure questions array exists
+  if (!gameData.topics[topicIndex].questions) {
+    gameData.topics[topicIndex].questions = [];
+  }
 
   // Check if we already have two questions with this point value
   const pointQuestions = gameData.topics[topicIndex].questions.filter(q => q.points === points);
@@ -431,60 +491,6 @@ function editQuestion(topicId, questionIndex) {
   questionTextInput.focus();
 }
 
-// Setup additional event listeners
-document.addEventListener('DOMContentLoaded', function() {
-  // Show/hide media URL input based on media type selection
-  const mediaTypeSelect = document.getElementById('media-type');
-  const mediaUrlContainer = document.getElementById('media-url-container');
-  const mediaUploadInput = document.getElementById('media-upload');
-  const mediaUrlInput = document.getElementById('media-url');
-  const uploadStatus = document.getElementById('upload-status');
-
-  mediaTypeSelect.addEventListener('change', function() {
-    if (this.value) {
-      mediaUrlContainer.style.display = 'block';
-    } else {
-      mediaUrlContainer.style.display = 'none';
-    }
-  });
-
-  // Handle file upload and convert to Data URL
-  mediaUploadInput.addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    // Validate file type based on selected media type
-    const mediaType = mediaTypeSelect.value;
-    let isValidType = false;
-
-    if (mediaType === 'image' && file.type.startsWith('image/')) {
-      isValidType = true;
-    } else if (mediaType === 'video' && file.type.startsWith('video/')) {
-      isValidType = true;
-    } else if (mediaType === 'audio' && file.type.startsWith('audio/')) {
-      isValidType = true;
-    }
-
-    if (!isValidType) {
-      alert(`الرجاء اختيار ملف من نوع ${mediaType}`);
-      return;
-    }
-
-    uploadStatus.textContent = 'جاري التحميل...';
-
-    const reader = new FileReader();
-    reader.onload = function(event) {
-      // Store the Data URL in the URL input
-      mediaUrlInput.value = event.target.result;
-      uploadStatus.textContent = 'تم التحميل بنجاح!';
-    };
-    reader.onerror = function() {
-      uploadStatus.textContent = 'حدث خطأ أثناء التحميل';
-    };
-    reader.readAsDataURL(file);
-  });
-});
-
 // Delete question
 function deleteQuestion(topicId, questionIndex, confirm = true) {
   if (confirm && !window.confirm('هل أنت متأكد من حذف هذا السؤال؟')) {
@@ -516,10 +522,6 @@ function updateTeams() {
   }
 
   saveGameData();
-
-  // Update game title to reflect team names
-  document.getElementById('game-title').textContent = `${gameData.teams[0].name} ضد ${gameData.teams[1].name}`;
-
   alert('تم حفظ بيانات الفرق بنجاح');
 }
 
@@ -545,9 +547,11 @@ function resetAnswers() {
   }
 
   gameData.topics.forEach(topic => {
-    topic.questions.forEach(question => {
-      question.answered = false;
-    });
+    if (topic.questions) {
+      topic.questions.forEach(question => {
+        question.answered = false;
+      });
+    }
   });
 
   saveGameData();
@@ -573,9 +577,11 @@ function resetAll() {
     teams: [
       { id: 1, name: "فريق 1", score: 0 },
       { id: 2, name: "فريق 2", score: 0 }
-    ]
+    ],
+    activeTopics: []
   };
 
+  saveGameData();
   alert('تم إعادة ضبط جميع بيانات اللعبة بنجاح');
 
   // Update all UI
@@ -584,6 +590,7 @@ function resetAll() {
   renderFilterTopicSelect();
   renderQuestionsTable();
   renderTeamsForm();
+  renderGameManagement();
 }
 
 // حذف المواضيع المكررة
@@ -615,6 +622,7 @@ function removeTopicDuplicates() {
   renderQuestionTopicSelect();
   renderFilterTopicSelect();
   renderQuestionsTable();
+  renderGameManagement();
 }
 
 // حذف الأسئلة المكررة داخل نفس الموضوع
@@ -625,6 +633,12 @@ function removeQuestionDuplicates() {
     const uniqueQuestionsText = new Set();
     // قائمة بالأسئلة الفريدة
     const uniqueQuestions = [];
+
+    // التأكد من أن topic.questions موجود
+    if (!topic.questions) {
+      topic.questions = [];
+      continue;
+    }
 
     // تحقق من كل سؤال
     for (const question of topic.questions) {
@@ -646,6 +660,499 @@ function removeQuestionDuplicates() {
 
   // تحديث واجهة المستخدم
   renderQuestionsTable();
+}
+
+// مفتاح قابل للتبديل لإظهار/إخفاء قسم الذكاء الاصطناعي
+function toggleAISection() {
+  const aiSection = document.getElementById('ai-generator-section');
+  const toggleBtn = document.getElementById('toggle-ai-section');
+
+  if (aiSection.classList.contains('hidden')) {
+    aiSection.classList.remove('hidden');
+    toggleBtn.textContent = 'إخفاء توليد الأسئلة الذكية';
+    // تحديث قائمة المواضيع عند فتح القسم
+    updateAITopicSelect();
+  } else {
+    aiSection.classList.add('hidden');
+    toggleBtn.textContent = 'توليد أسئلة باستخدام الذكاء الاصطناعي';
+  }
+}
+
+// تحديث قائمة المواضيع الموجودة في نموذج الذكاء الاصطناعي
+function updateAITopicSelect() {
+  const topicSelect = document.getElementById('ai-topic-select');
+  topicSelect.innerHTML = '<option value="">-- اختر موضوعاً موجوداً أو أدخل موضوعاً جديداً --</option>';
+
+  // إضافة المواضيع الموجودة للقائمة
+  gameData.topics.forEach(topic => {
+    const option = document.createElement('option');
+    option.value = topic.title;
+    option.textContent = topic.title;
+    topicSelect.appendChild(option);
+  });
+}
+
+// تحديث حقل الإدخال عند اختيار موضوع من القائمة
+function updateAITopicInput() {
+  const selectedTopic = document.getElementById('ai-topic-select').value;
+  const topicInput = document.getElementById('ai-topic');
+
+  if (selectedTopic) {
+    topicInput.value = selectedTopic;
+  }
+}
+
+// توليد جميع الفئات
+function generateAllCategories() {
+  generateAIQuestions("all");
+}
+
+// حفظ الأسئلة المولدة
+function saveAIQuestions() {
+  const aiQuestionsContainer = document.getElementById('ai-questions-container');
+  const questions = aiQuestionsContainer.querySelectorAll('.ai-question-item');
+  const topic = document.getElementById('ai-topic').value.trim();
+  
+  if (questions.length === 0) {
+    alert('لا توجد أسئلة لحفظها');
+    return;
+  }
+  
+  // ابحث عن الموضوع الحالي أو أنشئ واحداً جديداً
+  let topicObj = gameData.topics.find(t => t.title.toLowerCase() === topic.toLowerCase());
+  
+  if (!topicObj) {
+    // إنشاء موضوع جديد
+    topicObj = {
+      id: Date.now(),
+      title: topic,
+      questions: []
+    };
+    gameData.topics.push(topicObj);
+  }
+  
+  // التأكد من وجود مصفوفة الأسئلة
+  if (!topicObj.questions) {
+    topicObj.questions = [];
+  }
+  
+  // إضافة كل سؤال إلى الموضوع
+  questions.forEach(questionEl => {
+    if (questionEl.classList.contains('to-save')) {
+      const pointsEl = questionEl.querySelector('.ai-question-points');
+      const textEl = questionEl.querySelector('.ai-question-text');
+      const answerEl = questionEl.querySelector('.ai-question-answer');
+      const imageUrlEl = questionEl.querySelector('.ai-question-image-url');
+      
+      const points = parseInt(pointsEl.textContent.replace('النقاط: ', ''));
+      const text = textEl.textContent.replace('السؤال: ', '');
+      const answer = answerEl.textContent.replace('الإجابة: ', '');
+      const imageUrl = imageUrlEl ? imageUrlEl.textContent : '';
+      
+      // تحقق من عدد الأسئلة بنفس النقاط
+      const pointQuestions = topicObj.questions.filter(q => q.points === points);
+      if (pointQuestions.length < 2) {
+        const newQuestion = {
+          points,
+          text,
+          answer,
+          answered: false,
+          mediaType: imageUrl ? 'image' : '',
+          mediaUrl: imageUrl
+        };
+        
+        topicObj.questions.push(newQuestion);
+      } else {
+        alert(`تم تجاوز الحد الأقصى (2) للأسئلة بقيمة ${points} نقطة في الموضوع "${topic}"`);
+      }
+    }
+  });
+  
+  // حفظ التغييرات
+  saveGameData();
+  
+  // تحديث واجهة المستخدم
+  renderQuestionsTable();
+  renderQuestionTopicSelect();
+  renderFilterTopicSelect();
+  renderGameManagement();
+  
+  alert('تم حفظ الأسئلة بنجاح');
+  
+  // إخفاء نتائج الذكاء الاصطناعي
+  document.getElementById('ai-result').classList.add('hidden');
+}
+
+// توليد الأسئلة باستخدام الذكاء الاصطناعي
+async function generateAIQuestions(difficulty) {
+  const topic = document.getElementById('ai-topic').value.trim();
+  const includeImages = document.getElementById('ai-include-images').checked;
+  const addDirectly = document.getElementById('ai-add-directly').checked;
+  const explainGeneration = document.getElementById('ai-explain-generation').checked;
+
+  if (!topic) {
+    alert('الرجاء إدخال موضوع للأسئلة');
+    return;
+  }
+
+  // إظهار التحميل
+  document.getElementById('ai-loading').classList.remove('hidden');
+  document.getElementById('ai-result').classList.add('hidden');
+
+  // تحديد مستوى الصعوبة
+  let difficultyLevel = '';
+  let points = 0;
+  
+  if (difficulty === 200) {
+    difficultyLevel = 'سهل';
+    points = 200;
+  } else if (difficulty === 400) {
+    difficultyLevel = 'متوسط';
+    points = 400;
+  } else if (difficulty === 600) {
+    difficultyLevel = 'صعب';
+    points = 600;
+  } else if (difficulty === "all") {
+    difficultyLevel = 'متنوع';
+  }
+
+  try {
+    // إعداد الطلب للـ API
+    let prompt = '';
+    
+    if (difficulty === "all") {
+      prompt = `أنشئ 6 أسئلة عن "${topic}" بمستويات صعوبة مختلفة للعبة مسابقات:
+      - 2 أسئلة سهلة (200 نقطة)
+      - 2 أسئلة متوسطة (400 نقطة)
+      - 2 أسئلة صعبة (600 نقطة)
+      لكل سؤال، قدم الإجابة الصحيحة أيضًا.`;
+    } else {
+      prompt = `أنشئ 3 أسئلة عن "${topic}" بمستوى صعوبة ${difficultyLevel} (${points} نقطة) للعبة مسابقات.
+      لكل سؤال، قدم الإجابة الصحيحة أيضًا.`;
+    }
+
+    if (includeImages) {
+      prompt += `
+      أيضاً، قم بإضافة رابط يحتوي على صورة مناسبة من Wikimedia Commons لكل سؤال.`;
+    }
+    
+    if (explainGeneration) {
+      prompt += `
+      قم أيضاً بتوفير شرح مفصل عن كيفية بناء هذه الأسئلة، والمنهجية التي اتبعتها في صياغتها، ومناسبتها لمستوى الصعوبة المطلوب.`;
+    }
+    
+    prompt += `
+    قم بتقديم الإجابة بتنسيق سهل القراءة.`;
+
+    try {
+      // استدعاء API
+      const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: prompt }
+              ]
+            }
+          ],
+          generationConfig: {
+            temperature: 0.7,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 2048
+          }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`خطأ في استجابة API: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      // معالجة الرد من API
+      const aiResponse = data.candidates && data.candidates[0]?.content?.parts[0]?.text;
+      
+      if (!aiResponse) {
+        throw new Error('لم يتم استلام استجابة صالحة من API');
+      }
+      
+      // عرض النتائج
+      displayAIQuestions(aiResponse, topic, explainGeneration);
+      
+      // إضافة الأسئلة مباشرة إذا تم اختيار هذا الخيار
+      if (addDirectly) {
+        saveAIQuestions();
+      }
+      
+    } catch (error) {
+      console.error("خطأ في استدعاء API:", error);
+      alert(`خطأ في استدعاء API: ${error.message}`);
+    }
+    
+  } catch (error) {
+    console.error("خطأ:", error);
+    alert(`حدث خطأ: ${error.message}`);
+  } finally {
+    // إخفاء التحميل
+    document.getElementById('ai-loading').classList.add('hidden');
+  }
+}
+
+// عرض الأسئلة المولدة
+function displayAIQuestions(response, topic, hasExplanation) {
+  const aiQuestionsContainer = document.getElementById('ai-questions-container');
+  aiQuestionsContainer.innerHTML = '';
+  
+  // البحث عن الأسئلة والإجابات في الاستجابة
+  const questions = [];
+  let explanation = '';
+  
+  // تحليل النص للعثور على الأسئلة وعلاماتها وإجاباتها
+  const lines = response.split('\n');
+  let currentQuestion = null;
+  let isInExplanation = false;
+  
+  for (let line of lines) {
+    line = line.trim();
+    if (!line) continue;
+    
+    // التحقق من بداية قسم الشرح
+    if (line.includes('شرح') || line.includes('المنهجية') || line.includes('كيفية بناء')) {
+      isInExplanation = true;
+      explanation += line + '\n';
+      continue;
+    }
+    
+    if (isInExplanation) {
+      explanation += line + '\n';
+      continue;
+    }
+    
+    // البحث عن الأسئلة والنقاط والإجابات
+    if (line.match(/^(سؤال|#|\d+\.|السؤال)\s*\d*:?\s*/) || line.match(/^نقاط:?\s*\d+/i) || line.startsWith('س:')) {
+      const pointsMatch = line.match(/(\d+)\s*نقطة/);
+      const pointsMatch2 = line.match(/نقاط:?\s*(\d+)/i);
+      
+      if (pointsMatch || pointsMatch2 || line.includes('200') || line.includes('400') || line.includes('600')) {
+        // بدء سؤال جديد
+        if (currentQuestion) {
+          questions.push(currentQuestion);
+        }
+        
+        let points = 0;
+        if (pointsMatch) {
+          points = parseInt(pointsMatch[1]);
+        } else if (pointsMatch2) {
+          points = parseInt(pointsMatch2[1]);
+        } else if (line.includes('سهل') || line.includes('200')) {
+          points = 200;
+        } else if (line.includes('متوسط') || line.includes('400')) {
+          points = 400;
+        } else if (line.includes('صعب') || line.includes('600')) {
+          points = 600;
+        }
+        
+        const questionText = line.replace(/^(سؤال|#|\d+\.|السؤال)\s*\d*:?\s*/, '')
+                              .replace(/\(\d+\s*نقطة\)/, '')
+                              .replace(/نقاط:?\s*\d+/i, '')
+                              .replace(/س:\s*/, '')
+                              .trim();
+        
+        currentQuestion = {
+          points: points,
+          text: questionText,
+          answer: '',
+          imageUrl: ''
+        };
+      } else if (currentQuestion && currentQuestion.text === '') {
+        // هذا هو نص السؤال
+        currentQuestion.text = line.replace(/^(سؤال|#|\d+\.|السؤال):?\s*/, '').trim();
+      }
+    } else if (line.match(/^(الإجابة|الجواب|ج)[\s:]*/) || line.includes('لإجابة:')) {
+      if (currentQuestion) {
+        currentQuestion.answer = line.replace(/^(الإجابة|الجواب|ج)[\s:]*/, '')
+                                    .replace(/لإجابة:/, '')
+                                    .trim();
+      }
+    } else if (line.includes('http') && line.includes('commons') && currentQuestion) {
+      // هذا هو رابط الصورة
+      const urlMatch = line.match(/(https?:\/\/[^\s]+)/);
+      if (urlMatch) {
+        currentQuestion.imageUrl = urlMatch[1];
+      }
+    } else if (currentQuestion && currentQuestion.answer === '') {
+      // قد يكون هذا هو الإجابة
+      if (line.startsWith('-') || line.includes(':')) {
+        currentQuestion.answer = line.replace(/^-\s*/, '').replace(/^.*?:\s*/, '').trim();
+      }
+    }
+  }
+  
+  // إضافة السؤال الأخير إذا لم تتم إضافته
+  if (currentQuestion) {
+    questions.push(currentQuestion);
+  }
+  
+  // عرض الأسئلة
+  if (questions.length > 0) {
+    questions.forEach((q, index) => {
+      const questionElement = document.createElement('div');
+      questionElement.className = 'ai-question-item to-save';
+      
+      let html = `
+        <p class="ai-question-points">النقاط: ${q.points}</p>
+        <p class="ai-question-text">السؤال: ${q.text}</p>
+        <p class="ai-question-answer">الإجابة: ${q.answer}</p>
+      `;
+      
+      if (q.imageUrl) {
+        html += `
+          <p class="ai-question-image-url">${q.imageUrl}</p>
+          <div class="ai-question-image">
+            <img src="${q.imageUrl}" alt="صورة توضيحية" style="max-width: 200px; max-height: 150px;">
+          </div>
+        `;
+      }
+      
+      questionElement.innerHTML = html;
+      aiQuestionsContainer.appendChild(questionElement);
+    });
+    
+    // إضافة الشرح إذا كان موجودًا
+    if (hasExplanation && explanation) {
+      const explanationElement = document.createElement('div');
+      explanationElement.className = 'ai-explanation';
+      explanationElement.innerHTML = `
+        <h4>شرح آلية توليد الأسئلة:</h4>
+        <div class="explanation-content">${explanation.replace(/\n/g, '<br>')}</div>
+      `;
+      aiQuestionsContainer.appendChild(explanationElement);
+    }
+    
+    // إظهار النتائج
+    document.getElementById('ai-result').classList.remove('hidden');
+  } else {
+    aiQuestionsContainer.innerHTML = '<p>لم يتم العثور على أسئلة في الاستجابة</p>';
+    document.getElementById('ai-result').classList.remove('hidden');
+  }
+}
+
+// Render Game Management Section
+function renderGameManagement() {
+  // Render teams for game management
+  renderGameTeamsSection();
+
+  // Render topic selection
+  renderTopicSelectionSection();
+}
+
+// Render teams for game management
+function renderGameTeamsSection() {
+  gameTeamsContainer.innerHTML = '';
+
+  gameData.teams.forEach((team, index) => {
+    const teamDiv = document.createElement('div');
+    teamDiv.className = 'form-group';
+
+    teamDiv.innerHTML = `
+      <label for="game-team-name-${index}">اسم الفريق ${index + 1}</label>
+      <input type="text" id="game-team-name-${index}" value="${team.name}" required>
+    `;
+
+    gameTeamsContainer.appendChild(teamDiv);
+  });
+}
+
+// Render topic selection
+function renderTopicSelectionSection() {
+  topicSelectionContainer.innerHTML = '';
+
+  if (gameData.topics.length === 0) {
+    topicSelectionContainer.innerHTML = '<p>لا توجد مواضيع متاحة. أضف المواضيع أولاً.</p>';
+    return;
+  }
+
+  // Initialize activeTopics array if it doesn't exist
+  if (!gameData.activeTopics) {
+    gameData.activeTopics = [];
+  }
+
+  // Create a checkbox for each topic
+  gameData.topics.forEach(topic => {
+    const topicDiv = document.createElement('div');
+    topicDiv.className = 'topic-checkbox-container';
+
+    // Check if topic.id exists in activeTopics array (convert both to numbers)
+    const isChecked = gameData.activeTopics.includes(Number(topic.id));
+
+    topicDiv.innerHTML = `
+      <label>
+        <input type="checkbox" class="topic-checkbox" data-topic-id="${topic.id}" ${isChecked ? 'checked' : ''}>
+        ${topic.title}
+      </label>
+    `;
+
+    topicSelectionContainer.appendChild(topicDiv);
+  });
+
+  // Add event listener to limit selection to 6 topics
+  const checkboxes = document.querySelectorAll('.topic-checkbox');
+  checkboxes.forEach(checkbox => {
+    checkbox.addEventListener('change', () => {
+      const checked = document.querySelectorAll('.topic-checkbox:checked');
+      if (checked.length > 6) {
+        checkbox.checked = false;
+        alert('يمكنك اختيار 6 مواضيع كحد أقصى');
+      }
+    });
+  });
+}
+
+// Save game settings
+function saveGameSettings() {
+  // Update team names
+  gameData.teams.forEach((team, index) => {
+    const nameInput = document.getElementById(`game-team-name-${index}`);
+    if (nameInput) {
+      team.name = nameInput.value.trim();
+    }
+  });
+
+  // Update active topics
+  const checkedTopics = document.querySelectorAll('.topic-checkbox:checked');
+  gameData.activeTopics = Array.from(checkedTopics).map(checkbox =>
+    parseInt(checkbox.dataset.topicId)
+  );
+
+  // Make sure we have at least one topic
+  if (gameData.activeTopics.length === 0 && gameData.topics.length > 0) {
+    alert('يجب اختيار موضوع واحد على الأقل');
+    return;
+  }
+
+  // Save data and show confirmation
+  saveGameData();
+  alert('تم حفظ إعدادات اللعبة بنجاح');
+}
+
+// Validate URL function
+function isValidUrl(url) {
+  // Also accept data URLs
+  if (url.startsWith('data:')) {
+    return true;
+  }
+  
+  try {
+    new URL(url);
+    return true;
+  } catch (error) {
+    return false;
+  }
 }
 
 // Restore default topics
@@ -690,202 +1197,6 @@ function restoreDefaultTopics() {
         { points: 600, text: "ما اسم القائد البحري الذي يقود السفينة في رحلات الغوص التقليدية؟", answer: "النوخذة", answered: false, mediaType: "", mediaUrl: "" },
         { points: 600, text: "ما هي الطريقة التقليدية لصيد السمك المسماة بـ 'الحضرة'؟", answer: "بناء حواجز من سعف النخيل على الشاطئ لاصطياد الأسماك عند انحسار المد", answered: false, mediaType: "", mediaUrl: "" }
       ]
-    },
-    {
-      id: Date.now() + 4,
-      title: "محطات التاريخ",
-      questions: [
-        { points: 200, text: "في أي عام تم توحيد المملكة العربية السعودية؟", answer: "1932", answered: false, mediaType: "", mediaUrl: "" },
-        { points: 200, text: "من هو مؤسس الدولة السعودية الأولى؟", answer: "الإمام محمد بن سعود", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/3/3e/Muhammad_bin_Saud.jpg" },
-        { points: 400, text: "ما اسم المعركة التي انتصر فيها صلاح الدين الأيوبي على الصليبيين؟", answer: "معركة حطين", answered: false, mediaType: "", mediaUrl: "" },
-        { points: 400, text: "في أي عام تم اكتشاف النفط في المملكة العربية السعودية؟", answer: "1938", answered: false, mediaType: "", mediaUrl: "" },
-        { points: 600, text: "ما اسم المعاهدة التي وقعها الملك عبدالعزيز مع بريطانيا عام 1915؟", answer: "معاهدة دارين", answered: false, mediaType: "", mediaUrl: "" },
-        { points: 600, text: "من هو القائد المسلم الذي فتح الأندلس؟", answer: "طارق بن زياد", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Moorish_Gibraltar_%28Gibraltar_Museum%29.jpg/800px-Moorish_Gibraltar_%28Gibraltar_Museum%29.jpg" }
-      ]
-    },
-    {
-      id: Date.now() + 5,
-      title: "عواصم",
-      questions: [
-        { points: 200, text: "ما هي عاصمة المملكة الأردنية الهاشمية؟", answer: "عمّان", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/5/5f/Amman_Skyline.jpg" },
-        { points: 200, text: "ما هي أقدم عاصمة في العالم ما زالت مأهولة؟", answer: "دمشق", answered: false, mediaType: "", mediaUrl: "" },
-        { points: 400, text: "ما هي العاصمة الإدارية للاتحاد الأوروبي؟", answer: "بروكسل", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/0/0e/Bruxelles_Grand-Place_Zoom.jpg" },
-        { points: 400, text: "ما هي عاصمة نيوزيلندا؟", answer: "ويلينغتون", answered: false, mediaType: "", mediaUrl: "" },
-        { points: 600, text: "ما هي العاصمة التي بناها بطرس الأكبر في روسيا؟", answer: "سانت بطرسبرغ", answered: false, mediaType: "", mediaUrl: "" },
-        { points: 600, text: "ما هي العاصمة التي تضم أكبر عدد من الجسور في العالم؟", answer: "هامبورغ", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/7/72/Hamburg%2C_Speicherstadt%2C_Br%C3%BCcke.jpg" }
-      ]
-    },
-    {
-      id: Date.now() + 6,
-      title: "خرائط",
-      questions: [
-        { points: 200, text: "ما هي أكبر قارة في العالم؟", answer: "آسيا", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/8/80/Asia_%28orthographic_projection%29.svg" },
-        { points: 200, text: "ما هو الاسم القديم لسريلانكا؟", answer: "سيلان", answered: false, mediaType: "", mediaUrl: "" },
-        { points: 400, text: "ما هي الدولة التي تحدها دولة واحدة فقط؟", answer: "البرتغال", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/5/5d/EU-Portugal.svg" },
-        { points: 400, text: "ما هو المضيق الذي يفصل بين آسيا وأمريكا الشمالية؟", answer: "مضيق بيرنغ", answered: false, mediaType: "", mediaUrl: "" },
-        { points: 600, text: "ما هي الدولة التي لديها أكبر عدد من الحدود البرية مع دول أخرى؟", answer: "الصين وروسيا (لكل منهما 14 دولة مجاورة)", answered: false, mediaType: "", mediaUrl: "" },
-        { points: 600, text: "ما هي الدولة الوحيدة في العالم التي تقع داخل دولة أخرى؟", answer: "الفاتيكان (داخل إيطاليا)", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/a/ad/Vatican_City_map_EN.png" }
-      ]
-    },
-    // المواضيع الجديدة تبدأ هنا
-    {
-      id: Date.now() + 7,
-      title: "قصص الأنبياء",
-      questions: [
-        { points: 200, text: "من هو النبي الذي بنى الفلك؟", answer: "نوح عليه السلام", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/0/03/Noahs_ark.jpg" },
-        { points: 200, text: "من هو النبي الذي ألقي في النار ولم تحرقه؟", answer: "إبراهيم عليه السلام", answered: false, mediaType: "", mediaUrl: "" },
-        { points: 400, text: "ما اسم الغار الذي كان يتعبد فيه النبي محمد ﷺ قبل البعثة؟", answer: "غار حراء", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/7/7b/Hira_Cave_-_JPEG_Image.jpg" },
-        { points: 400, text: "من هو النبي الذي القي في البئر من قبل إخوته؟", answer: "يوسف عليه السلام", answered: false, mediaType: "", mediaUrl: "" },
-        { points: 600, text: "كم سنة دعا نوح عليه السلام قومه للإيمان بالله؟", answer: "950 سنة",```javascript
- answered: false, mediaType: "", mediaUrl: "" },
-        { points: 600, text: "ما هو الحيوان الذي كلّم النبي سليمان عليه السلام كما ورد في القرآن الكريم؟", answer: "النملة والهدهد", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/5/57/Upupa_epops_-Khao_Yai_National_Park%2C_Thailand-8.jpg" }
-      ]
-    },
-    {
-      id: Date.now() + 8,
-      title: "معالم إسلامية",
-      questions: [
-        { points: 200, text: "ما هو أول مسجد بني في الإسلام؟", answer: "مسجد قباء", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/d/dd/Quba_Mosque.jpg" },
-        { points: 200, text: "ما هو المسجد الثالث من حيث القدسية في الإسلام؟", answer: "المسجد الأقصى", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/b/bc/Israel-2013-Aerial-Jerusalem-Temple_Mount-Al-Aqsa_Mosque_Panorama.jpg" },
-        { points: 400, text: "ما اسم المكان الذي دُفن فيه الرسول ﷺ؟", answer: "الحجرة النبوية", answered: false, mediaType: "", mediaUrl: "" },
-        { points: 400, text: "ما اسم البقعة التي وقف عليها النبي ﷺ في خطبة الوداع؟", answer: "جبل عرفات", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/7/76/Jabal_Rahmah.jpg" },
-        { points: 600, text: "ما هو المكان الذي حدثت فيه أول معركة في الإسلام؟", answer: "بدر", answered: false, mediaType: "", mediaUrl: "" },
-        { points: 600, text: "ما اسم المسجد الذي بناه الصحابة على حدود المدينة المنورة لصد هجوم الأحزاب؟", answer: "مسجد الخندق (مسجد الفتح)", answered: false, mediaType: "", mediaUrl: "" }
-      ]
-    },
-    {
-      id: Date.now() + 9,
-      title: "أسئلة عامة",
-      questions: [
-        { points: 200, text: "ما هو أطول نهر في العالم؟", answer: "نهر النيل", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/1/16/River_Nile_from_space.jpg" },
-        { points: 200, text: "ما هو أكبر محيط في العالم؟", answer: "المحيط الهادئ", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/2/2c/Pacific_Ocean.png" },
-        { points: 400, text: "من هو مخترع المصباح الكهربائي؟", answer: "توماس إديسون", answered: false, mediaType: "", mediaUrl: "" },
-        { points: 400, text: "ما هو أكبر كوكب في المجموعة الشمسية؟", answer: "كوكب المشتري", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/2/2b/Jupiter_and_its_shrunken_Great_Red_Spot.jpg" },
-        { points: 600, text: "ما اسم الجهاز المستخدم لقياس شدة الزلازل؟", answer: "السيزموغراف", answered: false, mediaType: "", mediaUrl: "" },
-        { points: 600, text: "ما هي النسبة الذهبية في الرياضيات والفنون؟", answer: "1.618", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/e/e8/Golden_rectangle.png" }
-      ]
-    },
-    {
-      id: Date.now() + 10,
-      title: "الرياضة",
-      questions: [
-        { points: 200, text: "من هو اللاعب الحائز على أكبر عدد من كرات الذهبية في تاريخ كرة القدم؟", answer: "ليونيل ميسي", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/c/c8/Lionel_Messi_WC2022.jpg" },
-        { points: 200, text: "ما هي الدولة التي فازت بأكبر عدد من كؤوس العالم في كرة القدم؟", answer: "البرازيل", answered: false, mediaType: "", mediaUrl: "" },
-        { points: 400, text: "كم يبلغ عدد لاعبي كرة السلة في الملعب لكل فريق؟", answer: "5 لاعبين", answered: false, mediaType: "", mediaUrl: "" },
-        { points: 400, text: "ما هي الرياضة التي تشتهر بها نيوزيلندا ويؤدي لاعبوها رقصة الهاكا قبل المباراة؟", answer: "الرجبي", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d7/New_Zealand_rugby_match.jpg/800px-New_Zealand_rugby_match.jpg" },
-        { points: 600, text: "من هو أسرع إنسان في العالم ويحمل الرقم القياسي في سباق 100 متر؟", answer: "يوسين بولت", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Usain_BOLT_GBR_London_2012.jpg/330px-Usain_BOLT_GBR_London_2012.jpg" },
-        { points: 600, text: "كم عدد الحلقات الأولمبية وماذا تمثل؟", answer: "خمس حلقات تمثل القارات الخمس", answered: false, mediaType: "", mediaUrl: "" }
-      ]
-    },
-    {
-      id: Date.now() + 11,
-      title: "التكنولوجيا",
-      questions: [
-        { points: 200, text: "من هو مؤسس شركة مايكروسوفت؟", answer: "بيل غيتس", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/0/01/Bill_Gates_World_Economic_Forum_2013.jpg" },
-        { points: 200, text: "ما اسم أول حاسوب إلكتروني تم اختراعه؟", answer: "إنياك (ENIAC)", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Eniac.jpg/440px-Eniac.jpg" },
-        { points: 400, text: "ما هو البرنامج المستخدم لحماية الحاسوب من الفيروسات؟", answer: "مضاد الفيروسات (Antivirus)", answered: false, mediaType: "", mediaUrl: "" },
-        { points: 400, text: "ما هو العملة الرقمية الأكثر شهرة في العالم؟", answer: "البيتكوين (Bitcoin)", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Bitcoin.svg/800px-Bitcoin.svg.png" },
-        { points: 600, text: "ما هو مصطلح IoT في عالم التكنولوجيا؟", answer: "إنترنت الأشياء (Internet of Things)", answered: false, mediaType: "", mediaUrl: "" },
-        { points: 600, text: "ما هو اسم أول هاتف ذكي يعمل بنظام أندرويد؟", answer: "HTC Dream", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/e/e3/HTC_Dream_Orange_FR.jpeg" }
-      ]
-    },
-    {
-      id: Date.now() + 12,
-      title: "الطب والصحة",
-      questions: [
-        { points: 200, text: "ما هو أكبر عضو في جسم الإنسان؟", answer: "الجلد", answered: false, mediaType: "", mediaUrl: "" },
-        { points: 200, text: "ما هو العنصر الأكثر وفرة في جسم الإنسان؟", answer: "الأكسجين", answered: false, mediaType: "", mediaUrl: "" },
-        { points: 400, text: "ما هو الفيتامين الذي ينتجه الجسم عند التعرض لأشعة الشمس؟", answer: "فيتامين د", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/4/41/Vitamin_D3.svg" },
-        { points: 400, text: "كم عدد العظام في جسم الإنسان البالغ؟", answer: "206 عظمة", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Human_skeleton_front_en.svg/330px-Human_skeleton_front_en.svg.png" },
-        { points: 600, text: "ما هو الهرمون المسؤول عن الشعور بالسعادة؟", answer: "السيروتونين", answered: false, mediaType: "", mediaUrl: "" },
-        { points: 600, text: "ما هو المرض الذي اكتشفه الطبيب ألكسندر فلمنج علاجه بالصدفة؟", answer: "البكتيريا (المضاد الحيوي البنسلين)", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/6/6c/Alexander_Fleming.jpg" }
-      ]
-    },
-    // المواضيع الإضافية الجديدة
-    {
-      id: Date.now() + 13,
-      title: "الفن والثقافة",
-      questions: [
-        { points: 200, text: "من رسم لوحة الموناليزا؟", answer: "ليوناردو دافنشي", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Mona_Lisa%2C_by_Leonardo_da_Vinci%2C_from_C2RMF_retouched.jpg/405px-Mona_Lisa%2C_by_Leonardo_da_Vinci%2C_from_C2RMF_retouched.jpg" },
-        { points: 200, text: "ما هو الفن الذي اشتهر به بيكاسو؟", answer: "التكعيبية", answered: false, mediaType: "", mediaUrl: "" },
-        { points: 400, text: "من هو كاتب رواية الحرب والسلام؟", answer: "ليو تولستوي", answered: false, mediaType: "", mediaUrl: "" },
-        { points: 400, text: "ما هو الفن المعماري الذي اشتهرت به الحضارة الإسلامية؟", answer: "فن الزخرفة والأرابيسك", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/5/59/Arabesque_Daud.jpg" },
-        { points: 600, text: "من هو المؤلف الموسيقي الألماني الأصم الذي استمر في التأليف بعد فقدان سمعه؟", answer: "لودفيج فان بيتهوفن", answered: false, mediaType: "", mediaUrl: "" },
-        { points: 600, text: "ما اسم الفن المسرحي الياباني التقليدي الذي يستخدم الدمى؟", answer: "البونراكو", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/45/BUNRAKU-no_Puppet.jpg/800px-BUNRAKU-no_Puppet.jpg" }
-      ]
-    },
-    {
-      id: Date.now() + 14,
-      title: "الطبيعة والحيوانات",
-      questions: [
-        { points: 200, text: "ما هو أكبر حيوان على وجه الأرض؟", answer: "الحوت الأزرق", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/Blue_whale_size.svg/800px-Blue_whale_size.svg.png" },
-        { points: 200, text: "ما اسم أسرع حيوان بري في العالم؟", answer: "الفهد", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Cheetah_running.jpg/800px-Cheetah_running.jpg" },
-        { points: 400, text: "ما هو الحيوان الذي ينام وإحدى عينيه مفتوحة؟", answer: "الدلفين", answered: false, mediaType: "", mediaUrl: "" },
-        { points: 400, text: "ما اسم أعلى قمة جبلية في العالم؟", answer: "قمة إيفرست", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/f/f6/Everest_kalapatthar.jpg" },
-        { points: 600, text: "ما هي المدة التي يمكن للجمل أن يعيشها بدون ماء؟", answer: "أسبوعين", answered: false, mediaType: "", mediaUrl: "" },
-        { points: 600, text: "ما هو الطائر الوحيد القادر على الطيران للخلف؟", answer: "الطنان", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/Trochilidae_Archilochus-colubris_2.jpg/800px-Trochilidae_Archilochus-colubris_2.jpg" }
-      ]
-    },
-    {
-      id: Date.now() + 15,
-      title: "الفضاء والكواكب",
-      questions: [
-        { points: 200, text: "ما هو أقرب كوكب إلى الشمس؟", answer: "عطارد", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/Mercury_in_true_color.jpg/800px-Mercury_in_true_color.jpg" },
-        { points: 200, text: "من هو أول إنسان سار على سطح القمر؟", answer: "نيل أرمسترونج", answered: false, mediaType: "", mediaUrl: "" },
-        { points: 400, text: "ما هو اسم المجرة التي تقع فيها الأرض؟", answer: "مجرة درب التبانة", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/236084main_MilkyWay-full-annotated.jpg/800px-236084main_MilkyWay-full-annotated.jpg" },
-        { points: 400, text: "ما هو أكبر قمر في النظام الشمسي؟", answer: "جانيميد (قمر المشتري)", answered: false, mediaType: "", mediaUrl: "" },
-        { points: 600, text: "ما اسم المركبة الفضائية التي هبطت على المريخ عام 2021؟", answer: "برسفيرانس", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Perseverance_Selfie_at_Rochette_%28cropped%29.jpg/800px-Perseverance_Selfie_at_Rochette_%28cropped%29.jpg" },
-        { points: 600, text: "ما هو الثقب الأسود؟", answer: "منطقة ذات جاذبية شديدة في الفضاء لا يمكن للضوء الإفلات منها", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/Black_hole_-_Messier_87_crop_max_res.jpg/800px-Black_hole_-_Messier_87_crop_max_res.jpg" }
-      ]
-    },
-    {
-      id: Date.now() + 16,
-      title: "الطعام والمطبخ",
-      questions: [
-        { points: 200, text: "ما هي الدولة التي تُنسب إليها الباستا والبيتزا؟", answer: "إيطاليا", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/a/a3/Eq_it-na_pizza-margherita_sep2005_sml.jpg" },
-        { points: 200, text: "ما هو أشهر طبق في المطبخ الصيني؟", answer: "البط المقلي (البط البكيني)", answered: false, mediaType: "", mediaUrl: "" },
-        { points: 400, text: "ما الفاكهة التي تسمى 'ملكة الفواكه'؟", answer: "المانجوستين", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f7/Mangostan.jpg/800px-Mangostan.jpg" },
-        { points: 400, text: "ما هو النوع الوحيد من العسل الذي لا يفسد أبداً؟", answer: "العسل الطبيعي النقي", answered: false, mediaType: "", mediaUrl: "" },
-        { points: 600, text: "ما هي التوابل الأغلى في العالم؟", answer: "الزعفران", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/48/Saffron_Crop.JPG/800px-Saffron_Crop.JPG" },
-        { points: 600, text: "ما هو القهوة التي تعتبر الأغلى في العالم وتستخرج من برازالحيوانات؟", answer: "قهوة كوبي لواك", answered: false, mediaType: "", mediaUrl: "" }
-      ]
-    },
-    // المواضيع الجديدة المطلوبة
-    {
-      id: Date.now() + 17,
-      title: "إسلاميات",
-      questions: [
-        { points: 200, text: "كم عدد سور القرآن الكريم؟", answer: "114 سورة", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/3/38/Koran.jpg" },
-        { points: 200, text: "من هو النبي الذي اشتهر بدعاء الطائف؟", answer: "محمد صلى الله عليه وسلم", answered: false, mediaType: "", mediaUrl: "" },
-        { points: 400, text: "ما هي أول معركة في الإسلام؟", answer: "معركة بدر", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/7/71/Ghazweh.jpg" },
-        { points: 400, text: "كم عدد أركان الإسلام؟", answer: "خمسة أركان", answered: false, mediaType: "", mediaUrl: "" },
-        { points: 600, text: "من هو أول من جمع القرآن الكريم في مصحف واحد؟", answer: "أبو بكر الصديق رضي الله عنه", answered: false, mediaType: "", mediaUrl: "" },
-        { points: 600, text: "ما اسم أول سورة نزلت كاملة على النبي محمد صلى الله عليه وسلم؟", answer: "سورة الفاتحة", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/5/5f/Sura_Fatiha.jpg" }
-      ]
-    },
-    {
-      id: Date.now() + 18,
-      title: "أسئلة ذكاء",
-      questions: [
-        { points: 200, text: "شيء يمكنك رؤيته، لكن لا يمكنك لمسه أبداً. ما هو؟", answer: "الظل", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/b/b6/Light_dispersion_of_a_mercury-vapor_lamp_with_a_floodlight_fixture_covered_by_a_14_inch_snow_cover.jpg" },
-        { points: 200, text: "شيء يزداد كلما أخذت منه. ما هو؟", answer: "الحفرة", answered: false, mediaType: "", mediaUrl: "" },
-        { points: 400, text: "ما هو الشيء الذي يسير بلا أقدام، ويبكي بلا عيون؟", answer: "السحاب", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/e/e2/Cloudy_sky_in_Hong_Kong.jpg" },
-        { points: 400, text: "أخ وأخت دائما معاً، لكنهما لا يلتقيان أبداً. من هما؟", answer: "الليل والنهار", answered: false, mediaType: "", mediaUrl: "" },
-        { points: 600, text: "ما هو الشيء الذي يتحدث جميع لغات العالم؟", answer: "صدى الصوت", answered: false, mediaType: "", mediaUrl: "" },
-        { points: 600, text: "ما هو الشيء الذي كلما زاد نقص؟", answer: "العمر", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/3/31/Astrolabe_throughout_the_ages.jpg" }
-      ]
-    },
-    {
-      id: Date.now() + 19,
-      title: "شعارات عالمية",
-      questions: [
-        { points: 200, text: "ما اسم الشركة صاحبة هذا الشعار؟", answer: "أبل (Apple)", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg" },
-        { points: 200, text: "ما اسم الشركة صاحبة هذا الشعار؟", answer: "تويوتا (Toyota)", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/9/9d/Toyota_carlogo.svg" },
-        { points: 400, text: "ما اسم الشركة صاحبة هذا الشعار؟", answer: "ستاربكس (Starbucks)", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/en/thumb/d/d3/Starbucks_Corporation_Logo_2011.svg/1200px-Starbucks_Corporation_Logo_2011.svg.png" },
-        { points: 400, text: "ما اسم الشركة صاحبة هذا الشعار؟", answer: "نايك (Nike)", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/a/a6/Logo_NIKE.svg" },
-        { points: 600, text: "ما اسم الشركة صاحبة هذا الشعار؟", answer: "شل (Shell)", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/en/e/e8/Shell_logo.svg" },
-        { points: 600, text: "ما اسم الشركة صاحبة هذا الشعار؟", answer: "فيراري (Ferrari)", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/en/thumb/d/d1/Ferrari-Logo.svg/1200px-Ferrari-Logo.svg.png" }
-      ]
     }
   ];
 
@@ -899,257 +1210,11 @@ function restoreDefaultTopics() {
   renderTopicsTable();
   renderQuestionTopicSelect();
   renderFilterTopicSelect();
+  renderQuestionsTable();
+  renderGameManagement();
 }
 
-// Render Game Management Section
-function renderGameManagement() {
-  // Render teams for game management
-  renderGameTeamsSection();
-
-  // Render topic selection
-  renderTopicSelectionSection();
-}
-
-// Render teams for game management
-function renderGameTeamsSection() {
-  gameTeamsContainer.innerHTML = '';
-
-  gameData.teams.forEach((team, index) => {
-    const teamDiv = document.createElement('div');
-    teamDiv.className = 'form-group';
-
-    teamDiv.innerHTML = `
-      <label for="game-team-name-${index}">اسم الفريق ${index + 1}</label>
-      <input type="text" id="game-team-name-${index}" value="${team.name}" required>
-    `;
-
-    gameTeamsContainer.appendChild(teamDiv);
-  });
-}
-
-// Render topic selection
-function renderTopicSelectionSection() {
-  topicSelectionContainer.innerHTML = '';
-
-  if (gameData.topics.length === 0) {
-    topicSelectionContainer.innerHTML = '<p>لا توجد مواضيع متاحة. أضف المواضيع أولاً.</p>';
-    return;
-  }
-
-  // Initialize activeTopics array if it doesn't exist
-  if (!gameData.activeTopics) {
-    gameData.activeTopics = [];
-  }
-
-  console.log("Active topics when rendering checkboxes:", gameData.activeTopics);
-
-  // Create a checkbox for each topic
-  gameData.topics.forEach(topic => {
-    const topicDiv = document.createElement('div');
-    topicDiv.className = 'topic-checkbox-container';
-
-    // Check if topic.id exists in activeTopics array (convert both to numbers)
-    const isChecked = gameData.activeTopics.includes(Number(topic.id));
-
-    topicDiv.innerHTML = `
-      <label>
-        <input type="checkbox" class="topic-checkbox" data-topic-id="${topic.id}" ${isChecked ? 'checked' : ''}>
-        ${topic.title} (ID: ${topic.id})
-      </label>
-    `;
-
-    topicSelectionContainer.appendChild(topicDiv);
-  });
-
-  // Add event listener to limit selection to 6 topics
-  const checkboxes = document.querySelectorAll('.topic-checkbox');
-  checkboxes.forEach(checkbox => {
-    checkbox.addEventListener('change', () => {
-      const checked = document.querySelectorAll('.topic-checkbox:checked');
-      if (checked.length > 6) {
-        checkbox.checked = false;
-        alert('يمكنك اختيار 6 مواضيع كحد أقصى');
-      }
-    });
-  });
-}
-
-// Save game settings
-function saveGameSettings() {
-  // Update team names
-  gameData.teams.forEach((team, index) => {
-    const nameInput = document.getElementById(`game-team-name-${index}`);
-    if (nameInput) {
-      team.name = nameInput.value.trim();
-    }
-  });
-
-  // Update active topics
-  const checkedTopics = document.querySelectorAll('.topic-checkbox:checked');
-  gameData.activeTopics = Array.from(checkedTopics).map(checkbox =>
-    parseInt(checkbox.dataset.topicId)
-  );
-
-  console.log("Saving active topics:", gameData.activeTopics);
-
-  // Make sure we have at least one topic
-  if (gameData.activeTopics.length === 0 && gameData.topics.length > 0) {
-    alert('يجب اختيار موضوع واحد على الأقل');
-    return;
-  }
-
-  // Make sure activeTopics is saved properly
-  if (!Array.isArray(gameData.activeTopics)) {
-    gameData.activeTopics = [];
-  }
-
-  // Save data and show confirmation
-  saveGameData();
-  alert('تم حفظ إعدادات اللعبة بنجاح');
-
-  // Force reload of page to apply changes
-  window.location.reload();
-}
-
-// Validate URL function
-function isValidUrl(url) {
-  try {
-    new URL(url);
-    return true;
-  } catch (error) {
-    return false;
-  }
-}
-
-// مفتاح قابل للتبديل لإظهار/إخفاء قسم الذكاء الاصطناعي
-function toggleAISection() {
-  const aiSection = document.getElementById('ai-generator-section');
-  const toggleBtn = document.getElementById('toggle-ai-section');
-
-  if (aiSection.classList.contains('hidden')) {
-    aiSection.classList.remove('hidden');
-    toggleBtn.textContent = 'إخفاء توليد الأسئلة الذكية';
-    // تحديث قائمة المواضيع عند فتح القسم
-    updateAITopicSelect();
-  } else {
-    aiSection.classList.add('hidden');
-    toggleBtn.textContent = 'توليد أسئلة باستخدام الذكاء الاصطناعي';
-  }
-}
-
-// تحديث قائمة المواضيع الموجودة في نموذج الذكاء الاصطناعي
-function updateAITopicSelect() {
-  const topicSelect = document.getElementById('ai-topic-select');
-  topicSelect.innerHTML = '<option value="">-- اختر موضوعاً موجوداً أو أدخل موضوعاً جديداً --</option>';
-
-  // إضافة المواضيع الموجودة للقائمة
-  gameData.topics.forEach(topic => {
-    const option = document.createElement('option');
-    option.value = topic.title;
-    option.textContent = topic.title;
-    topicSelect.appendChild(option);
-  });
-}
-
-// تحديث حقل الإدخال عند اختيار موضوع من القائمة
-function updateAITopicInput() {
-  const selectedTopic = document.getElementById('ai-topic-select').value;
-  const topicInput = document.getElementById('ai-topic');
-
-  if (selectedTopic) {
-    topicInput.value = selectedTopic;
-  }
-}
-
-// Generate AI Questions using Google Gemini
-async function generateAIQuestions(difficulty) {
-  const topic = document.getElementById('ai-topic').value.trim();
-  const includeImages = document.getElementById('ai-include-images').checked;
-  const addDirectly = document.getElementById('ai-add-directly').checked;
-  const explainGeneration = document.getElementById('ai-explain-generation').checked;
-
-  if (!topic) {
-    alert('الرجاء إدخال موضوع للأسئلة');
-    return;
-  }
-
-  // Show loading
-  document.getElementById('ai-loading').classList.remove('hidden');
-  document.getElementById('ai-result').classList.add('hidden');
-
-  // Set difficulty level description
-  let difficultyLevel = '';
-  if (difficulty === 200) difficultyLevel = 'سهل';
-  else if (difficulty === 400) difficultyLevel = 'متوسط';
-  else if (difficulty === 600) difficultyLevel = 'صعب';
-
-  try {
-    // Prepare prompt for Gemini API
-    let prompt = `أنشئ 3 أسئلة عن "${topic}" بمستوى صعوبة ${difficultyLevel} للعبة مسابقات.
-     لكل سؤال، قدم الإجابة الصحيحة أيضًا.`;
-
-    if (includeImages) {
-      prompt += `
-     أيضاً، قم بإضافة رابط يحتوي على صورة مناسبة من Wikimedia Commons لكل سؤال.
-     استجابتك يجب أن تكون بتنسيق JSON فقط، بدون أي شرح إضافي.
-     اتبع هذا النموذج تمامًا: 
-     [
-       {"text": "نص السؤال الأول", "answer": "الإجابة الصحيحة للسؤال الأول", "imageUrl": "رابط الصورة المناسبة للسؤال الأول"}, 
-       {"text": "نص السؤال الثاني", "answer": "الإجابة الصحيحة للسؤال الثاني", "imageUrl": "رابط الصورة المناسبة للسؤال الثاني"}, 
-       {"text": "نص السؤال الثالث", "answer": "الإجابة الصحيحة للسؤال الثالث", "imageUrl": "رابط الصورة المناسبة للسؤال الثالث"}
-     ]`;
-    } else {
-      prompt += `
-     استجابتك يجب أن تكون بتنسيق JSON فقط، بدون أي شرح إضافي.
-     اتبع هذا النموذج تمامًا: 
-     [
-       {"text": "نص السؤال الأول", "answer": "الإجابة الصحيحة للسؤال الأول"}, 
-       {"text": "نص السؤال الثاني", "answer": "الإجابة الصحيحة للسؤال الثاني"}, 
-       {"text": "نص السؤال الثالث", "answer": "الإجابة الصحيحة للسؤال الثالث"}
-     ]`;
-    }
-
-    // إضافة طلب الشرح إذا كان الخيار مفعل
-    if (explainGeneration) {
-      prompt += `
-       قم أيضاً بتوفير شرح مفصل عن كيفية بناء هذه الأسئلة، والمنهجية التي اتبعتها في صياغتها، وكيف يمكن تحسينها أو تطويرها. اشرح أيضاً لماذا تعتبر هذه الأسئلة مناسبة لمستوى الصعوبة المطلوب.
-      `;
-    }
-
-    console.log("Sending prompt to Gemini API:", prompt);
-
-    try {
-      // Call Gemini API with the correct URL and format
-      const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                { text: prompt }
-              ]
-            }
-          ],
-          generationConfig: {
-            temperature: 0.7,
-            topK: 40,
-            topP: 0.95,
-            maxOutputTokens: 1024
-          }
-        })
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("API response error:", errorText);
-        throw new Error(`خطأ في استجابة API: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log("Raw API response:", data);
-
-      if (json و ```)
-        content = content.trim().replace(/```json/g, '').replace(/
+// Initialize dashboard on page load
+document.addEventListener('DOMContentLoaded', function() {
+  initDashboard();
+});

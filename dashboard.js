@@ -49,7 +49,7 @@ function initDashboard() {
   renderQuestionsTable();
   renderTeamsForm();
   renderGameManagement();
-  
+
   // Ensure we have teams data
   if (!gameData.teams || gameData.teams.length === 0) {
     gameData.teams = [
@@ -58,7 +58,7 @@ function initDashboard() {
     ];
     saveGameData();
   }
-  
+
   // Initialize activeTopics if empty
   if (!gameData.activeTopics || gameData.activeTopics.length === 0) {
     // By default, use all topic IDs (up to 6)
@@ -137,7 +137,7 @@ function setupEventListeners() {
     e.preventDefault();
     updateTeams();
   });
-  
+
   // Game settings form
   saveGameSettingsBtn.addEventListener('click', saveGameSettings);
 
@@ -146,17 +146,18 @@ function setupEventListeners() {
   resetAnswersBtn.addEventListener('click', resetAnswers);
   resetAllBtn.addEventListener('click', resetAll);
   restoreDefaultTopicsBtn.addEventListener('click', restoreDefaultTopics);
-  
+
   // حذف المكررات
   document.getElementById('remove-duplicate-topics').addEventListener('click', removeTopicDuplicates);
   document.getElementById('remove-duplicate-questions').addEventListener('click', removeQuestionDuplicates);
-  
+
   // AI Question Generator buttons
   document.getElementById('toggle-ai-section').addEventListener('click', toggleAISection);
   document.getElementById('ai-topic-select').addEventListener('change', updateAITopicInput);
   document.getElementById('generate-easy').addEventListener('click', () => generateAIQuestions(200));
   document.getElementById('generate-medium').addEventListener('click', () => generateAIQuestions(400));
   document.getElementById('generate-hard').addEventListener('click', () => generateAIQuestions(600));
+  document.getElementById('generate-all').addEventListener('click', generateAllCategories);
   document.getElementById('save-ai-questions').addEventListener('click', saveAIQuestions);
 }
 
@@ -228,7 +229,7 @@ function renderQuestionsTable() {
 
     topic.questions.forEach((question, qIndex) => {
       const row = document.createElement('tr');
-      
+
       let mediaInfo = 'لا يوجد';
       if (question.mediaType) {
         const mediaTypes = {
@@ -347,13 +348,13 @@ function addQuestion() {
   const mediaUrl = document.getElementById('media-url').value.trim();
 
   if (!topicId || !points || !text || !answer) return;
-  
+
   // Validate media URL if media type is selected
   if (mediaType && !mediaUrl) {
     alert('الرجاء إدخال رابط للوسائط المختارة');
     return;
   }
-  
+
   // Validate URL format
   if (mediaUrl && !isValidUrl(mediaUrl)) {
     alert('الرجاء إدخال رابط صحيح للوسائط');
@@ -408,13 +409,13 @@ function editQuestion(topicId, questionIndex) {
   questionPointsSelect.value = question.points;
   questionTextInput.value = question.text;
   questionAnswerInput.value = question.answer;
-  
+
   const mediaTypeSelect = document.getElementById('media-type');
   const mediaUrlContainer = document.getElementById('media-url-container');
   const mediaUrlInput = document.getElementById('media-url');
-  
+
   mediaTypeSelect.value = question.mediaType || '';
-  
+
   if (question.mediaType && question.mediaUrl) {
     mediaUrlContainer.style.display = 'block';
     mediaUrlInput.value = question.mediaUrl;
@@ -438,7 +439,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const mediaUploadInput = document.getElementById('media-upload');
   const mediaUrlInput = document.getElementById('media-url');
   const uploadStatus = document.getElementById('upload-status');
-  
+
   mediaTypeSelect.addEventListener('change', function() {
     if (this.value) {
       mediaUrlContainer.style.display = 'block';
@@ -446,16 +447,16 @@ document.addEventListener('DOMContentLoaded', function() {
       mediaUrlContainer.style.display = 'none';
     }
   });
-  
+
   // Handle file upload and convert to Data URL
   mediaUploadInput.addEventListener('change', function(e) {
     const file = e.target.files[0];
     if (!file) return;
-    
+
     // Validate file type based on selected media type
     const mediaType = mediaTypeSelect.value;
     let isValidType = false;
-    
+
     if (mediaType === 'image' && file.type.startsWith('image/')) {
       isValidType = true;
     } else if (mediaType === 'video' && file.type.startsWith('video/')) {
@@ -463,14 +464,14 @@ document.addEventListener('DOMContentLoaded', function() {
     } else if (mediaType === 'audio' && file.type.startsWith('audio/')) {
       isValidType = true;
     }
-    
+
     if (!isValidType) {
       alert(`الرجاء اختيار ملف من نوع ${mediaType}`);
       return;
     }
-    
+
     uploadStatus.textContent = 'جاري التحميل...';
-    
+
     const reader = new FileReader();
     reader.onload = function(event) {
       // Store the Data URL in the URL input
@@ -515,10 +516,10 @@ function updateTeams() {
   }
 
   saveGameData();
-  
+
   // Update game title to reflect team names
   document.getElementById('game-title').textContent = `${gameData.teams[0].name} ضد ${gameData.teams[1].name}`;
-  
+
   alert('تم حفظ بيانات الفرق بنجاح');
 }
 
@@ -591,7 +592,7 @@ function removeTopicDuplicates() {
   const uniqueTitles = new Set();
   // قائمة بالمواضيع الفريدة
   const uniqueTopics = [];
-  
+
   // تحقق من كل موضوع
   for (const topic of gameData.topics) {
     // إذا لم يكن هناك موضوع بنفس العنوان، أضفه إلى القائمة الفريدة
@@ -602,13 +603,13 @@ function removeTopicDuplicates() {
       console.log(`تم حذف موضوع مكرر: ${topic.title}`);
     }
   }
-  
+
   // تحديث قائمة المواضيع
   gameData.topics = uniqueTopics;
-  
+
   // حفظ التغييرات
   saveGameData();
-  
+
   // تحديث واجهة المستخدم
   renderTopicsTable();
   renderQuestionTopicSelect();
@@ -624,7 +625,7 @@ function removeQuestionDuplicates() {
     const uniqueQuestionsText = new Set();
     // قائمة بالأسئلة الفريدة
     const uniqueQuestions = [];
-    
+
     // تحقق من كل سؤال
     for (const question of topic.questions) {
       // استخدم نص السؤال كمفتاح فريد
@@ -635,14 +636,14 @@ function removeQuestionDuplicates() {
         console.log(`تم حذف سؤال مكرر في موضوع ${topic.title}: ${question.text}`);
       }
     }
-    
+
     // تحديث قائمة الأسئلة للموضوع
     topic.questions = uniqueQuestions;
   }
-  
+
   // حفظ التغييرات
   saveGameData();
-  
+
   // تحديث واجهة المستخدم
   renderQuestionsTable();
 }
@@ -903,7 +904,7 @@ function restoreDefaultTopics() {
 function renderGameManagement() {
   // Render teams for game management
   renderGameTeamsSection();
-  
+
   // Render topic selection
   renderTopicSelectionSection();
 }
@@ -911,16 +912,16 @@ function renderGameManagement() {
 // Render teams for game management
 function renderGameTeamsSection() {
   gameTeamsContainer.innerHTML = '';
-  
+
   gameData.teams.forEach((team, index) => {
     const teamDiv = document.createElement('div');
     teamDiv.className = 'form-group';
-    
+
     teamDiv.innerHTML = `
       <label for="game-team-name-${index}">اسم الفريق ${index + 1}</label>
       <input type="text" id="game-team-name-${index}" value="${team.name}" required>
     `;
-    
+
     gameTeamsContainer.appendChild(teamDiv);
   });
 }
@@ -928,37 +929,37 @@ function renderGameTeamsSection() {
 // Render topic selection
 function renderTopicSelectionSection() {
   topicSelectionContainer.innerHTML = '';
-  
+
   if (gameData.topics.length === 0) {
     topicSelectionContainer.innerHTML = '<p>لا توجد مواضيع متاحة. أضف المواضيع أولاً.</p>';
     return;
   }
-  
+
   // Initialize activeTopics array if it doesn't exist
   if (!gameData.activeTopics) {
     gameData.activeTopics = [];
   }
-  
+
   console.log("Active topics when rendering checkboxes:", gameData.activeTopics);
-  
+
   // Create a checkbox for each topic
   gameData.topics.forEach(topic => {
     const topicDiv = document.createElement('div');
     topicDiv.className = 'topic-checkbox-container';
-    
+
     // Check if topic.id exists in activeTopics array (convert both to numbers)
     const isChecked = gameData.activeTopics.includes(Number(topic.id));
-    
+
     topicDiv.innerHTML = `
       <label>
         <input type="checkbox" class="topic-checkbox" data-topic-id="${topic.id}" ${isChecked ? 'checked' : ''}>
         ${topic.title} (ID: ${topic.id})
       </label>
     `;
-    
+
     topicSelectionContainer.appendChild(topicDiv);
   });
-  
+
   // Add event listener to limit selection to 6 topics
   const checkboxes = document.querySelectorAll('.topic-checkbox');
   checkboxes.forEach(checkbox => {
@@ -981,30 +982,30 @@ function saveGameSettings() {
       team.name = nameInput.value.trim();
     }
   });
-  
+
   // Update active topics
   const checkedTopics = document.querySelectorAll('.topic-checkbox:checked');
-  gameData.activeTopics = Array.from(checkedTopics).map(checkbox => 
+  gameData.activeTopics = Array.from(checkedTopics).map(checkbox =>
     parseInt(checkbox.dataset.topicId)
   );
-  
+
   console.log("Saving active topics:", gameData.activeTopics);
-  
+
   // Make sure we have at least one topic
   if (gameData.activeTopics.length === 0 && gameData.topics.length > 0) {
     alert('يجب اختيار موضوع واحد على الأقل');
     return;
   }
-  
+
   // Make sure activeTopics is saved properly
   if (!Array.isArray(gameData.activeTopics)) {
     gameData.activeTopics = [];
   }
-  
+
   // Save data and show confirmation
   saveGameData();
   alert('تم حفظ إعدادات اللعبة بنجاح');
-  
+
   // Force reload of page to apply changes
   window.location.reload();
 }
@@ -1023,7 +1024,7 @@ function isValidUrl(url) {
 function toggleAISection() {
   const aiSection = document.getElementById('ai-generator-section');
   const toggleBtn = document.getElementById('toggle-ai-section');
-  
+
   if (aiSection.classList.contains('hidden')) {
     aiSection.classList.remove('hidden');
     toggleBtn.textContent = 'إخفاء توليد الأسئلة الذكية';
@@ -1039,7 +1040,7 @@ function toggleAISection() {
 function updateAITopicSelect() {
   const topicSelect = document.getElementById('ai-topic-select');
   topicSelect.innerHTML = '<option value="">-- اختر موضوعاً موجوداً أو أدخل موضوعاً جديداً --</option>';
-  
+
   // إضافة المواضيع الموجودة للقائمة
   gameData.topics.forEach(topic => {
     const option = document.createElement('option');
@@ -1053,7 +1054,7 @@ function updateAITopicSelect() {
 function updateAITopicInput() {
   const selectedTopic = document.getElementById('ai-topic-select').value;
   const topicInput = document.getElementById('ai-topic');
-  
+
   if (selectedTopic) {
     topicInput.value = selectedTopic;
   }
@@ -1064,27 +1065,27 @@ async function generateAIQuestions(difficulty) {
   const topic = document.getElementById('ai-topic').value.trim();
   const includeImages = document.getElementById('ai-include-images').checked;
   const addDirectly = document.getElementById('ai-add-directly').checked;
-  
+
   if (!topic) {
     alert('الرجاء إدخال موضوع للأسئلة');
     return;
   }
-  
+
   // Show loading
   document.getElementById('ai-loading').classList.remove('hidden');
   document.getElementById('ai-result').classList.add('hidden');
-  
+
   // Set difficulty level description
   let difficultyLevel = '';
   if (difficulty === 200) difficultyLevel = 'سهل';
   else if (difficulty === 400) difficultyLevel = 'متوسط';
   else if (difficulty === 600) difficultyLevel = 'صعب';
-  
+
   try {
     // Prepare prompt for Gemini API
     let prompt = `أنشئ 3 أسئلة عن "${topic}" بمستوى صعوبة ${difficultyLevel} للعبة مسابقات.
      لكل سؤال، قدم الإجابة الصحيحة أيضًا.`;
-    
+
     if (includeImages) {
       prompt += `
      أيضاً، قم بإضافة رابط يحتوي على صورة مناسبة من Wikimedia Commons لكل سؤال.
@@ -1105,9 +1106,9 @@ async function generateAIQuestions(difficulty) {
        {"text": "نص السؤال الثالث", "answer": "الإجابة الصحيحة للسؤال الثالث"}
      ]`;
     }
-    
+
     console.log("Sending prompt to Gemini API:", prompt);
-    
+
     try {
       // Call Gemini API with the correct URL and format
       const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
@@ -1131,43 +1132,43 @@ async function generateAIQuestions(difficulty) {
           }
         })
       });
-      
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error("API response error:", errorText);
         throw new Error(`خطأ في استجابة API: ${response.status}`);
       }
-      
+
       const data = await response.json();
       console.log("Raw API response:", data);
-      
+
       if (data.error) {
         throw new Error(data.error.message || 'حدث خطأ في API');
       }
-      
+
       // تحقق من وجود البيانات المطلوبة في الاستجابة
       if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
         throw new Error('استجابة غير مكتملة من واجهة برمجة Gemini');
       }
-      
+
       // استخراج النص من استجابة Gemini
       let content = '';
       if (data.candidates[0].content.parts && data.candidates[0].content.parts.length > 0) {
         content = data.candidates[0].content.parts[0].text || '';
       }
-      
+
       console.log("Gemini API response content:", content);
-      
+
       // تنظيف النص واستخراج JSON
       let cleanedContent = content.trim();
-      
+
       // محاولة استخراج كود JSON
       let jsonData;
       try {
         // محاولة العثور على قوس البداية والنهاية
         const startIndex = cleanedContent.indexOf('[');
         const endIndex = cleanedContent.lastIndexOf(']') + 1;
-        
+
         if (startIndex >= 0 && endIndex > startIndex) {
           const jsonString = cleanedContent.substring(startIndex, endIndex);
           jsonData = JSON.parse(jsonString);
@@ -1180,18 +1181,18 @@ async function generateAIQuestions(difficulty) {
         console.error("Content that failed to parse:", cleanedContent);
         throw new Error('تعذر تحليل البيانات من الذكاء الاصطناعي - تنسيق JSON غير صالح');
       }
-      
+
       if (!Array.isArray(jsonData)) {
         throw new Error('البيانات المستلمة ليست بتنسيق مصفوفة صالح');
       }
-      
+
       // التحقق من صحة بنية البيانات
       const validQuestions = jsonData.filter(q => q.text && q.answer);
-      
+
       if (validQuestions.length === 0) {
         throw new Error('لم يتم العثور على أسئلة صالحة في البيانات المستلمة');
       }
-      
+
       // تحقق إذا كان يجب إضافة الأسئلة مباشرة
       if (addDirectly) {
         // إضافة الأسئلة مباشرة إلى قاعدة البيانات
@@ -1200,11 +1201,11 @@ async function generateAIQuestions(difficulty) {
         // عرض الأسئلة للمستخدم للمراجعة
         displayAIQuestions(validQuestions, difficulty, topic);
       }
-      
+
     } catch (error) {
       throw error;
     }
-    
+
   } catch (error) {
     console.error('خطأ في توليد الأسئلة:', error);
     document.getElementById('ai-loading').classList.add('hidden');
@@ -1216,7 +1217,7 @@ async function generateAIQuestions(difficulty) {
 function displayAIQuestions(questions, difficulty, topic) {
   const container = document.getElementById('ai-questions-container');
   container.innerHTML = '';
-  
+
   // Process questions to remove text in parentheses
   const processedQuestions = questions.map(q => {
     // تعديل نص السؤال لإزالة ما بين الأقواس
@@ -1226,22 +1227,22 @@ function displayAIQuestions(questions, difficulty, topic) {
       text: processedText
     };
   });
-  
+
   // Store processed questions for later saving
   container.dataset.questions = JSON.stringify(processedQuestions);
   container.dataset.difficulty = difficulty;
   container.dataset.topic = topic;
-  
+
   // Create HTML for each question
   processedQuestions.forEach((question, index) => {
     const questionElement = document.createElement('div');
     questionElement.className = 'ai-question-item';
-    
+
     let html = `
       <p><strong>السؤال ${index + 1}:</strong> ${question.text}</p>
       <p><strong>الإجابة:</strong> ${question.answer}</p>
     `;
-    
+
     // إذا كان السؤال يحتوي على صورة، أضفها
     if (question.imageUrl) {
       html += `
@@ -1250,11 +1251,11 @@ function displayAIQuestions(questions, difficulty, topic) {
         </div>
       `;
     }
-    
+
     questionElement.innerHTML = html;
     container.appendChild(questionElement);
   });
-  
+
   // Hide loading, show results
   document.getElementById('ai-loading').classList.add('hidden');
   document.getElementById('ai-result').classList.remove('hidden');
@@ -1271,10 +1272,10 @@ function saveAIQuestionsDirectly(questions, difficulty, topic) {
         text: processedText
       };
     });
-    
+
     // التحقق من وجود الموضوع
     let topicIndex = gameData.topics.findIndex(t => t.title.toLowerCase() === topic.toLowerCase());
-    
+
     // إذا لم يكن الموضوع موجوداً، قم بإنشائه
     if (topicIndex === -1) {
       const newTopic = {
@@ -1282,19 +1283,19 @@ function saveAIQuestionsDirectly(questions, difficulty, topic) {
         title: topic,
         questions: []
       };
-      
+
       gameData.topics.push(newTopic);
       topicIndex = gameData.topics.length - 1;
     }
-    
+
     // عداد للأسئلة التي تم إضافتها
     let addedQuestions = 0;
-    
+
     // إضافة الأسئلة إلى الموضوع
     processedQuestions.forEach(q => {
       // التحقق من عدد الأسئلة الموجودة بنفس قيمة النقاط
       const pointQuestions = gameData.topics[topicIndex].questions.filter(existing => existing.points === difficulty);
-      
+
       if (pointQuestions.length < 2) {
         const newQuestion = {
           points: difficulty,
@@ -1304,40 +1305,40 @@ function saveAIQuestionsDirectly(questions, difficulty, topic) {
           mediaType: "",
           mediaUrl: ""
         };
-        
+
         // إذا كان السؤال يحتوي على صورة، أضفها
         if (q.imageUrl) {
           newQuestion.mediaType = "image";
           newQuestion.mediaUrl = q.imageUrl;
         }
-        
+
         gameData.topics[topicIndex].questions.push(newQuestion);
         addedQuestions++;
       }
     });
-    
+
     // حفظ البيانات وتحديث واجهة المستخدم
     saveGameData();
-    
+
     // إخفاء التحميل
     document.getElementById('ai-loading').classList.add('hidden');
-    
+
     if (addedQuestions > 0) {
       alert(`تم إضافة ${addedQuestions} سؤال بنجاح في موضوع "${topic}"`);
     } else {
       alert(`لم يتم إضافة أي أسئلة جديدة. هناك بالفعل سؤالان بقيمة ${difficulty} نقطة في هذا الموضوع.`);
     }
-    
+
     // تحديث واجهة المستخدم
     renderTopicsTable();
     renderQuestionTopicSelect();
     renderFilterTopicSelect();
     renderQuestionsTable();
     updateAITopicSelect(); // تحديث قائمة المواضيع
-    
+
     // مسح حقل الموضوع
     document.getElementById('ai-topic').value = '';
-    
+
   } catch (error) {
     console.error('خطأ في حفظ الأسئلة مباشرة:', error);
     alert('حدث خطأ أثناء حفظ الأسئلة: ' + error.message);
@@ -1349,26 +1350,27 @@ function saveAIQuestionsDirectly(questions, difficulty, topic) {
 function saveAIQuestions() {
   const container = document.getElementById('ai-questions-container');
   const questionsData = container.dataset.questions;
-  const difficulty = parseInt(container.dataset.difficulty);
+  const isAllCategories = container.dataset.allCategories === "true";
+  const difficulty = isAllCategories ? null : parseInt(container.dataset.difficulty);
   const topicTitle = container.dataset.topic;
-  
+
   if (!questionsData) {
     alert('لا توجد أسئلة لحفظها');
     return;
   }
-  
+
   try {
     // Parse questions data
     const questions = JSON.parse(questionsData);
-    
+
     if (!Array.isArray(questions) || questions.length === 0) {
       alert('تنسيق الأسئلة غير صالح');
       return;
     }
-    
+
     // Check if topic exists already
     let topicIndex = gameData.topics.findIndex(t => t.title.toLowerCase() === topicTitle.toLowerCase());
-    
+
     // If topic doesn't exist, create it
     if (topicIndex === -1) {
       const newTopic = {
@@ -1376,60 +1378,111 @@ function saveAIQuestions() {
         title: topicTitle,
         questions: []
       };
-      
+
       gameData.topics.push(newTopic);
       topicIndex = gameData.topics.length - 1;
     }
-    
+
     // عداد للأسئلة التي تم إضافتها
     let addedQuestions = 0;
-    
-    // Add questions to the topic
-    questions.forEach(q => {
-      // Check if we already have two questions with this point value
-      const pointQuestions = gameData.topics[topicIndex].questions.filter(existing => existing.points === difficulty);
-      
-      if (pointQuestions.length < 2) {
-        const newQuestion = {
-          points: difficulty,
-          text: q.text,
-          answer: q.answer,
-          answered: false,
-          mediaType: "",
-          mediaUrl: ""
-        };
-        
-        // إذا كان السؤال يحتوي على صورة، أضفها
-        if (q.imageUrl) {
-          newQuestion.mediaType = "image";
-          newQuestion.mediaUrl = q.imageUrl;
+
+    // للأسئلة من جميع الفئات
+    if (isAllCategories) {
+      // تصنيف الأسئلة حسب صعوبتها
+      const questionsByPoints = {
+        200: [],
+        400: [],
+        600: []
+      };
+
+      questions.forEach(q => {
+        if (q.points in questionsByPoints) {
+          questionsByPoints[q.points].push(q);
         }
-        
-        gameData.topics[topicIndex].questions.push(newQuestion);
-        addedQuestions++;
+      });
+
+      // إضافة الأسئلة إلى الموضوع لكل فئة من الصعوبة
+      for (const points in questionsByPoints) {
+        // التحقق من عدد الأسئلة الموجودة بنفس قيمة النقاط
+        const existingPointQuestions = gameData.topics[topicIndex].questions.filter(existing => existing.points === parseInt(points));
+
+        // إضافة أسئلة جديدة فقط إذا كان هناك مساحة للأسئلة من هذه الفئة
+        const questionsToAdd = questionsByPoints[points].slice(0, Math.min(2 - existingPointQuestions.length, questionsByPoints[points].length));
+
+        questionsToAdd.forEach(q => {
+          const newQuestion = {
+            points: parseInt(points),
+            text: q.text,
+            answer: q.answer,
+            answered: false,
+            mediaType: "",
+            mediaUrl: ""
+          };
+
+          // إذا كان السؤال يحتوي على صورة، أضفها
+          if (q.imageUrl) {
+            newQuestion.mediaType = "image";
+            newQuestion.mediaUrl = q.imageUrl;
+          }
+
+          gameData.topics[topicIndex].questions.push(newQuestion);
+          addedQuestions++;
+        });
       }
-    });
-    
+    }
+    // للأسئلة من فئة واحدة
+    else {
+      // Add questions to the topic
+      questions.forEach(q => {
+        // Check if we already have two questions with this point value
+        const pointQuestions = gameData.topics[topicIndex].questions.filter(existing => existing.points === difficulty);
+
+        if (pointQuestions.length < 2) {
+          const newQuestion = {
+            points: difficulty,
+            text: q.text,
+            answer: q.answer,
+            answered: false,
+            mediaType: "",
+            mediaUrl: ""
+          };
+
+          // إذا كان السؤال يحتوي على صورة، أضفها
+          if (q.imageUrl) {
+            newQuestion.mediaType = "image";
+            newQuestion.mediaUrl = q.imageUrl;
+          }
+
+          gameData.topics[topicIndex].questions.push(newQuestion);
+          addedQuestions++;
+        }
+      });
+    }
+
     // Save and update UI
     saveGameData();
-    
+
     if (addedQuestions > 0) {
       alert(`تم حفظ ${addedQuestions} سؤال بنجاح في موضوع "${topicTitle}"`);
     } else {
-      alert(`لم يتم إضافة أي أسئلة جديدة. هناك بالفعل سؤالان بقيمة ${difficulty} نقطة في هذا الموضوع.`);
+      if (isAllCategories) {
+        alert(`لم يتم إضافة أي أسئلة جديدة. ربما تكون هناك أسئلة كافية بالفعل في هذا الموضوع.`);
+      } else {
+        alert(`لم يتم إضافة أي أسئلة جديدة. هناك بالفعل سؤالان بقيمة ${difficulty} نقطة في هذا الموضوع.`);
+      }
     }
-    
+
     // Update UI
     renderTopicsTable();
     renderQuestionTopicSelect();
     renderFilterTopicSelect();
     renderQuestionsTable();
     updateAITopicSelect(); // تحديث قائمة المواضيع
-    
+
     // Hide the results
     document.getElementById('ai-result').classList.add('hidden');
     document.getElementById('ai-topic').value = '';
-    
+
   } catch (error) {
     console.error('خطأ في حفظ الأسئلة:', error);
     alert('حدث خطأ أثناء حفظ الأسئلة: ' + error.message);
@@ -1438,3 +1491,90 @@ function saveAIQuestions() {
 
 // Initialize when page loads
 window.addEventListener('DOMContentLoaded', initDashboard);
+
+async function generateAllCategories() {
+  const topic = document.getElementById('ai-topic').value.trim();
+  const includeImages = document.getElementById('ai-include-images').checked;
+  const addDirectly = document.getElementById('ai-add-directly').checked;
+
+  if (!topic) {
+    alert('الرجاء إدخال موضوع للأسئلة');
+    return;
+  }
+
+  document.getElementById('ai-loading').classList.remove('hidden');
+  document.getElementById('ai-result').classList.add('hidden');
+
+  const allQuestions = [];
+  try {
+    for (const difficulty of [200, 400, 600]) {
+      let prompt = `أنشئ 3 أسئلة عن "${topic}" بمستوى صعوبة `;
+      if (difficulty === 200) prompt += 'سهل';
+      else if (difficulty === 400) prompt += 'متوسط';
+      else if (difficulty === 600) prompt += 'صعب';
+      prompt += ` للعبة مسابقات. لكل سؤال، قدم الإجابة الصحيحة أيضًا.`;
+
+      if (includeImages) {
+        prompt += `
+           أيضاً، قم بإضافة رابط يحتوي على صورة مناسبة من Wikimedia Commons لكل سؤال.
+           استجابتك يجب أن تكون بتنسيق JSON فقط، بدون أي شرح إضافي.
+           اتبع هذا النموذج تمامًا: 
+           [
+             {"text": "نص السؤال الأول", "answer": "الإجابة الصحيحة للسؤال الأول", "imageUrl": "رابط الصورة المناسبة للسؤال الأول", "points": ${difficulty}}, 
+             {"text": "نص السؤال الثاني", "answer": "الإجابة الصحيحة للسؤال الثاني", "imageUrl": "رابط الصورة المناسبة للسؤال الثاني", "points": ${difficulty}}, 
+             {"text": "نص السؤال الثالث", "answer": "الإجابة الصحيحة للسؤال الثالث", "imageUrl": "رابط الصورة المناسبة للسؤال الثالث", "points": ${difficulty}}
+           ]`;
+      } else {
+        prompt += `
+           استجابتك يجب أن تكون بتنسيق JSON فقط، بدون أي شرح إضافي.
+           اتبع هذا النموذج تمامًا: 
+           [
+             {"text": "نص السؤال الأول", "answer": "الإجابة الصحيحة للسؤال الأول", "points": ${difficulty}}, 
+             {"text": "نص السؤال الثاني", "answer": "الإجابة الصحيحة للسؤال الثاني", "points": ${difficulty}}, 
+             {"text": "نص السؤال الثالث", "answer": "الإجابة الصحيحة للسؤال الثالث", "points": ${difficulty}}
+           ]`;
+      }
+
+
+      const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: prompt }
+              ]
+            }
+          ],
+          generationConfig: {
+            temperature: 0.7,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 1024
+          }
+        })
+      });
+
+      const data = await response.json();
+      let content = data.candidates[0].content.parts[0].text;
+      let jsonData = JSON.parse(content.trim());
+      allQuestions.push(...jsonData);
+    }
+
+    if (addDirectly) {
+      saveAIQuestionsDirectly(allQuestions, null, topic);
+      document.getElementById('ai-questions-container').dataset.allCategories = true;
+    } else {
+      displayAIQuestions(allQuestions, null, topic);
+      document.getElementById('ai-questions-container').dataset.allCategories = true;
+    }
+  } catch (error) {
+    console.error('خطأ في توليد الأسئلة:', error);
+    alert('حدث خطأ أثناء توليد الأسئلة: ' + error.message);
+  } finally {
+    document.getElementById('ai-loading').classList.add('hidden');
+  }
+}

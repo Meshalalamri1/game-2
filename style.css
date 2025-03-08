@@ -711,34 +711,3 @@ table th {
 .team2-turn .switch-turn-btn i {
   color: #e74c3c;
 }
-
-.ai-questions-table td.actions {
-  display: flex;
-  justify-content: space-around;
-}
-
-.ai-questions-table .remove-question {
-  color: var(--warning-color);
-  cursor: pointer;
-}
-
-.ai-explanation {
-  margin: 15px 0;
-  padding: 15px;
-  background-color: #f8f9fa;
-  border: 1px solid #e9ecef;
-  border-radius: 5px;
-}
-
-.ai-explanation h4 {
-  color: var(--primary-color);
-  margin-top: 0;
-  margin-bottom: 10px;
-  font-size: 1.1rem;
-}
-
-.explanation-content {
-  line-height: 1.6;
-  font-size: 0.95rem;
-  text-align: justify;
-}

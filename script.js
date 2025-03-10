@@ -274,7 +274,14 @@ function openQuestion(topic, question) {
   answerText.textContent = question.answer;
   answerText.classList.add('hidden');
   questionMedia.innerHTML = ''; 
-
+  questionMedia.classList.remove('hidden');
+  
+  // إخفاء مؤشر الفريق الحالي عند فتح السؤال
+  const currentTeamIndicator = document.querySelector('.current-team-indicator');
+  if (currentTeamIndicator) {
+    currentTeamIndicator.style.display = 'none';
+  }
+  
   updateTeamTurn();
 
   // التأكد من عرض Modal في أعلى الصفحة
@@ -363,6 +370,12 @@ function openQuestion(topic, question) {
 function closeModal() {
   modal.style.display = 'none';
   clearInterval(timerInterval);
+  
+  // إظهار مؤشر الفريق الحالي مرة أخرى بعد إغلاق السؤال
+  const currentTeamIndicator = document.querySelector('.current-team-indicator');
+  if (currentTeamIndicator) {
+    currentTeamIndicator.style.display = 'flex';
+  }
 }
 
 // Start timer (increases from 0 with no maximum limit)
@@ -383,6 +396,8 @@ function revealAnswer() {
     answerText.textContent = currentQuestion.question.answer;
   }
   answerText.classList.remove('hidden');
+  // إخفاء الوسائط عند إظهار الإجابة
+  questionMedia.classList.add('hidden');
   showAnswerBtn.disabled = true;
 }
 

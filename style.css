@@ -224,15 +224,17 @@ header {
 
 .modal-content {
   background-color: white;
-  margin: 3% auto;
+  margin: 2% auto;
   padding: 0;
   border-radius: 10px;
   width: 85%;
   max-width: 850px;
-  max-height: 90vh;
+  max-height: 95vh;
   overflow-y: auto;
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
   animation: modalFadeIn 0.3s;
+  display: flex;
+  flex-direction: column;
 }
 
 @keyframes modalFadeIn {
@@ -310,7 +312,7 @@ header {
 
 .question-media-content {
   max-width: 100%;
-  max-height: 300px; /* تقليل ارتفاع الوسائط لإفساح المجال للمحتوى الآخر */
+  max-height: 250px;
   border-radius: 5px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   object-fit: contain;
@@ -367,27 +369,31 @@ header {
 }
 
 .points-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
   width: 100%;
   justify-content: center;
   padding: 0 10px;
+  margin-top: 15px;
 }
 
 .award-button {
-  padding: 10px 15px;
+  padding: 15px;
   background-color: var(--primary-color);
   color: white;
   border: none;
-  border-radius: 5px;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: bold;
   transition: background-color 0.3s;
-  flex: 1;
-  min-width: 120px;
-  max-width: 180px;
+  min-height: 50px;
+}
+
+#award-none {
+  grid-column: span 2;
+  background-color: #7f8c8d;
 }
 
 .award-button:hover {

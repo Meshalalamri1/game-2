@@ -1,16 +1,74 @@
 <!DOCTYPE html>
-<html>
-
+<html dir="rtl" lang="ar">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width">
-  <title>replit</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>لعبة المسابقة</title>
   <link href="style.css" rel="stylesheet" type="text/css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 
 <body>
-  Hello world
+  <div class="container">
+    <header>
+      <div class="score-container team1">
+        <button class="score-minus"><i class="fas fa-minus"></i></button>
+        <div class="score" id="team1-score">0</div>
+        <button class="score-plus"><i class="fas fa-plus"></i></button>
+      </div>
+      
+      <div class="title">
+        <h1 id="game-title">لعبة المسابقة</h1>
+        <a href="dashboard.html" class="admin-link">لوحة التحكم</a>
+      </div>
+      
+      <div class="score-container team2">
+        <button class="score-minus"><i class="fas fa-minus"></i></button>
+        <div class="score" id="team2-score">0</div>
+        <button class="score-plus"><i class="fas fa-plus"></i></button>
+      </div>
+    </header>
+
+    <main id="game-board">
+      <!-- Game board will be dynamically generated -->
+    </main>
+    
+    <!-- إضافة مساحة في الأسفل لمنع تغطية المؤشر على الأسئلة -->
+    <div style="height: 80px; width: 100%;"></div>
+
+    <div class="current-team-indicator">
+      <div class="indicator-label">الدور الحالي:</div>
+      <div id="current-team-name">جاري التحميل...</div>
+      <button id="switch-turn" class="switch-turn-btn" title="تغيير الدور">
+        <i class="fas fa-exchange-alt"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Question Modal -->
+  <div id="question-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <span class="close">&times;</span>
+        <h2 id="question-category">الموضوع</h2>
+        <div id="timer">60</div>
+      </div>
+      <div class="modal-body">
+        <div id="question-text"></div>
+        <div id="question-media" class="media-container"></div>
+        <div id="answer-text" class="hidden"></div>
+        <div class="modal-buttons">
+          <button id="show-answer">إظهار الإجابة</button>
+          <div class="points-buttons">
+            <button id="award-team1" class="award-button">فريق 1 <span id="award-points"></span> نقطة</button>
+            <button id="award-team2" class="award-button">فريق 2 <span id="award-points2"></span> نقطة</button>
+            <button id="award-none" class="award-button none-button">لا أحد</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="script.js"></script>
 </body>
-
 </html>

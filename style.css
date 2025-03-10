@@ -583,22 +583,6 @@ table th {
   padding: 5px 10px;
 }
 
-/* أنماط أسئلة التخمين */
-#ai-question-type, #ai-guessing-type {
-  width: 100%;
-  padding: 10px;
-  border-radius: 5px;
-  border: 1px solid #ddd;
-  margin-bottom: 10px;
-  background-color: #fff;
-}
-
-#ai-custom-guessing {
-  width: 100%;
-  padding: 10px;
-  border-radius: 5px;
-}
-
 #ai-loading, #ai-result {
   margin-top: 15px;
 }

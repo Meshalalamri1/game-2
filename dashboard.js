@@ -159,8 +159,6 @@ function setupEventListeners() {
   document.getElementById('generate-hard').addEventListener('click', () => generateAIQuestions(600));
   document.getElementById('generate-all').addEventListener('click', generateAllCategories);
   document.getElementById('save-ai-questions').addEventListener('click', saveAIQuestions);
-  document.getElementById('ai-question-type').addEventListener('change', handleQuestionTypeChange);
-  document.getElementById('ai-guessing-type').addEventListener('change', handleGuessingTypeChange);
 }
 
 // Render topics table
@@ -737,8 +735,7 @@ function restoreDefaultTopics() {
         { points: 200, text: "من هو النبي الذي بنى الفلك؟", answer: "نوح عليه السلام", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/0/03/Noahs_ark.jpg" },
         { points: 200, text: "من هو النبي الذي ألقي في النار ولم تحرقه؟", answer: "إبراهيم عليه السلام", answered: false, mediaType: "", mediaUrl: "" },
         { points: 400, text: "ما اسم الغار الذي كان يتعبد فيه النبي محمد ﷺ قبل البعثة؟", answer: "غار حراء", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/7/7b/Hira_Cave_-_JPEG_Image.jpg" },
-        { points: 400, text: "من هو النبي الذي القي في البئر من قبل إخوته؟```javascript
-", answer: "يوسف عليه السلام", answered: false, mediaType: "", mediaUrl: "" },
+        { points: 400, text: "من هو النبي الذي القي في البئر من قبل إخوته؟", answer: "يوسف عليه السلام", answered: false, mediaType: "", mediaUrl: "" },
         { points: 600, text: "كم سنة دعا نوح عليه السلام قومه للإيمان بالله؟", answer: "950 سنة", answered: false, mediaType: "", mediaUrl: "" },
         { points: 600, text: "ما هو الحيوان الذي كلّم النبي سليمان عليه السلام كما ورد في القرآن الكريم؟", answer: "النملة والهدهد", answered: false, mediaType: "image", mediaUrl: "https://upload.wikimedia.org/wikipedia/commons/5/57/Upupa_epops_-Khao_Yai_National_Park%2C_Thailand-8.jpg" }
       ]
@@ -1063,33 +1060,6 @@ function updateAITopicInput() {
   }
 }
 
-// إدارة إظهار وإخفاء خيارات التخمين
-function handleQuestionTypeChange() {
-  const questionType = document.getElementById('ai-question-type').value;
-  const guessingTypeContainer = document.getElementById('ai-guessing-type-container');
-  const customGuessingContainer = document.getElementById('ai-custom-guessing-container');
-
-  if (questionType === 'guessing') {
-    guessingTypeContainer.style.display = 'block';
-    handleGuessingTypeChange(); // تحديث حالة حقل التخمين المخصص
-  } else {
-    guessingTypeContainer.style.display = 'none';
-    customGuessingContainer.style.display = 'none';
-  }
-}
-
-// إدارة إظهار وإخفاء حقل التخمين المخصص
-function handleGuessingTypeChange() {
-  const guessingType = document.getElementById('ai-guessing-type').value;
-  const customGuessingContainer = document.getElementById('ai-custom-guessing-container');
-
-  if (guessingType === 'custom') {
-    customGuessingContainer.style.display = 'block';
-  } else {
-    customGuessingContainer.style.display = 'none';
-  }
-}
-
 // Generate AI Questions using Google Gemini
 async function generateAIQuestions(difficulty) {
   const topic = document.getElementById('ai-topic').value.trim();
@@ -1112,40 +1082,87 @@ async function generateAIQuestions(difficulty) {
   else if (difficulty === 600) difficultyLevel = 'صعب';
 
   try {
-    // الحصول على نوع السؤال (عادي أو تخمين)
-    const questionType = document.getElementById('ai-question-type').value;
-    let guessingType = '';
-    let customGuessingType = '';
+    // Prepare prompt for Gemini API
+    let prompt = `أنشئ 3 أسئلة عن "${topic}" بمستوى صعوبة ${difficultyLevel} للعبة مسابقات.
+     لكل سؤال، قدم الإجابة الصحيحة أيضًا.`;
 
-    if (questionType === 'guessing') {
-      guessingType = document.getElementById('ai-guessing-type').value;
-      if (guessingType === 'custom') {
-        customGuessingType = document.getElementById('ai-custom-guessing').value.trim();
-        if (!customGuessingType) {
-          alert('يجب إدخال نوع التخمين المخصص');
-          document.getElementById('ai-loading').classList.add('hidden');
-          return;
-        }
-      }
+    if (includeImages) {
+      prompt += `
+     أيضاً، قم بإضافة رابط يحتوي على صورة مناسبة من Wikimedia Commons لكل سؤال.
+     استجابتك يجب أن تكون بتنسيق JSON فقط، بدون أي شرح إضافي.
+     اتبع هذا النموذج تمامًا: 
+     [
+       {"text": "نص السؤال الأول", "answer": "الإجابة الصحيحة للسؤال الأول", "imageUrl": "رابط الصورة المناسبة للسؤال الأول"}, 
+       {"text": "نص السؤال الثاني", "answer": "الإجابة الصحيحة للسؤال الثاني", "imageUrl": "رابط الصورة المناسبة للسؤال الثاني"}, 
+       {"text": "نص السؤال الثالث", "answer": "الإجابة الصحيحة للسؤال الثالث", "imageUrl": "رابط الصورة المناسبة للسؤال الثالث"}
+     ]`;
+    } else {
+      prompt += `
+     استجابتك يجب أن تكون بتنسيق JSON فقط، بدون أي شرح إضافي.
+     اتبع هذا النموذج تمامًا: 
+     [
+       {"text": "نص السؤال الأول", "answer": "الإجابة الصحيحة للسؤال الأول"}, 
+       {"text": "نص السؤال الثاني", "answer": "الإجابة الصحيحة للسؤال الثاني"}, 
+       {"text": "نص السؤال الثالث", "answer": "الإجابة الصحيحة للسؤال الثالث"}
+     ]`;
     }
 
-    // Prepare prompt based on the selected difficulty and question type
-    let prompt = '';
+    console.log("Sending prompt to Gemini API:", prompt);
 
-    if (questionType === 'normal') {
-      // أسئلة عادية
-      if (difficulty === null) {
-        // توليد جميع الفئات (سهل، متوسط، صعب)
-        prompt = `أريد منك إنشاء أسئلة لمسابقة ثقافية حول "${topic}" بثلاث مستويات من الصعوبة: سهل (200 نقطة)، متوسط (400 نقطة)، وصعب (600 نقطة). يجب أن تكون الإجابات قصيرة ومباشرة. أعطني على الأقل سؤالين من كل مستوى صعوبة.`;
-      } else {
-        // توليد فئة واحدة من الصعوبة
-        const difficultyName = {
-          200: 'سهل',
-          400: 'متوسط',
-          600: 'صعب'
-        }[difficulty];
+    try {
+      // Call Gemini API with the correct URL and format
+      const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: prompt }
+              ]
+            }
+          ],
+          generationConfig: {
+            temperature: 0.7,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 1024
+          }
+        })
+      });
 
-        prompt = `أريد منك إنشاء أسئلة لمسابقة ثقافية بمستوى ${difficultyName} (${difficulty} نقطة) حولjson و ```)
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("API response error:", errorText);
+        throw new Error(`خطأ في استجابة API: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("Raw API response:", data);
+
+      if (data.error) {
+        throw new Error(data.error.message || 'حدث خطأ في API');
+      }
+
+      // تحقق من وجود البيانات المطلوبة في الاستجابة
+      if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
+        throw new Error('استجابة غير مكتملة من واجهة برمجة Gemini');
+      }
+
+      // استخراج النص من استجابة Gemini
+      let content = '';
+      if (data.candidates[0].content.parts && data.candidates[0].content.parts.length > 0) {
+        content = data.candidates[0].content.parts[0].text || '';
+      }
+
+      console.log("Gemini API response content:", content);
+
+      // تنظيف النص واستخراج JSON
+      let cleanedContent = content.trim();
+      
+      // إزالة علامات التنسيق للماركداون (أي إزالة ```json و ```)
       cleanedContent = cleanedContent.replace(/```json/g, '').replace(/```/g, '');
 
       // محاولة استخراج كود JSON
@@ -1281,24 +1298,24 @@ function saveAIQuestionsDirectly(questions, difficulty, topic) {
     if (difficulty === null) {
       // تصنيف الأسئلة حسب صعوبتها (النقاط)
       const pointsCategories = [200, 400, 600];
-
+      
       // لكل فئة نقاط
       for (const points of pointsCategories) {
         // الأسئلة المولدة لهذه الفئة
         const questionsForCategory = processedQuestions.filter(q => q.points === points);
-
+        
         // التحقق من عدد الأسئلة الموجودة بقيمة النقاط هذه
         const existingPointQuestions = gameData.topics[topicIndex].questions.filter(
           existing => existing.points === points
         );
-
+        
         // عدد الأسئلة التي يمكن إضافتها (حد أقصى سؤالين لكل فئة)
         const availableSlots = 2 - existingPointQuestions.length;
-
+        
         // إضافة الأسئلة المتاحة فقط
         if (availableSlots > 0 && questionsForCategory.length > 0) {
           const questionsToAdd = questionsForCategory.slice(0, availableSlots);
-
+          
           questionsToAdd.forEach(q => {
             const newQuestion = {
               points: points,
@@ -1308,19 +1325,19 @@ function saveAIQuestionsDirectly(questions, difficulty, topic) {
               mediaType: "",
               mediaUrl: ""
             };
-
+            
             // إذا كان السؤال يحتوي على صورة، أضفها
             if (q.imageUrl) {
               newQuestion.mediaType = "image";
               newQuestion.mediaUrl = q.imageUrl;
             }
-
+            
             gameData.topics[topicIndex].questions.push(newQuestion);
             addedQuestions++;
           });
         }
       }
-    }
+    } 
     // فئة واحدة محددة - difficulty هو قيمة النقاط
     else {
       // التحقق من عدد الأسئلة الموجودة بنفس قيمة النقاط
@@ -1330,11 +1347,11 @@ function saveAIQuestionsDirectly(questions, difficulty, topic) {
 
       // حساب عدد الأسئلة التي يمكن إضافتها
       const availableSlots = 2 - pointQuestions.length;
-
+      
       if (availableSlots > 0) {
         // إضافة ما يصل إلى العدد المتاح من الأسئلة
         const questionsToAdd = processedQuestions.slice(0, availableSlots);
-
+        
         questionsToAdd.forEach(q => {
           const newQuestion = {
             points: difficulty,
@@ -1577,7 +1594,7 @@ async function generateAllCategories() {
 
       try {
         console.log("Sending prompt to Gemini API:", prompt);
-
+        
         const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
           method: 'POST',
           headers: {
@@ -1625,6 +1642,62 @@ async function generateAllCategories() {
         }
 
         console.log("Gemini API response content:", content);
-
+        
         // إزالة علامات التنسيق للماركداون (أي إزالة ```json و ```)
-        content = content.trim().replace(/```json/g, '').replace(/
+        content = content.trim().replace(/```json/g, '').replace(/```/g, '');
+        
+        // محاولة استخراج كود JSON
+        try {
+          // محاولة العثور على قوس البداية والنهاية
+          const startIndex = content.indexOf('[');
+          const endIndex = content.lastIndexOf(']') + 1;
+          
+          let jsonString;
+          if (startIndex >= 0 && endIndex > startIndex) {
+            jsonString = content.substring(startIndex, endIndex);
+          } else {
+            jsonString = content;
+          }
+          
+          const jsonData = JSON.parse(jsonString);
+          
+          // إضافة النقاط لكل سؤال إذا لم تكن موجودة
+          const processedJsonData = jsonData.map(q => {
+            if (!q.points) {
+              return {...q, points: difficulty};
+            }
+            return q;
+          });
+          
+          allQuestions.push(...processedJsonData);
+        } catch (jsonError) {
+          console.error("JSON parsing error in generateAllCategories:", jsonError);
+          console.error("Content that failed to parse:", content);
+          throw new Error('تعذر تحليل البيانات من الذكاء الاصطناعي - تنسيق JSON غير صالح');
+        }
+
+      } catch (apiError) {
+        console.error(`Error generating questions for difficulty ${difficulty}:`, apiError);
+        // استمرار للصعوبة التالية حتى لو فشلت الحالية
+      }
+    }
+
+    // التحقق من وجود أسئلة قبل متابعة العملية
+    if (allQuestions.length === 0) {
+      throw new Error('لم يتم توليد أي أسئلة. الرجاء المحاولة مرة أخرى.');
+    }
+
+    if (addDirectly) {
+      saveAIQuestionsDirectly(allQuestions, null, topic);
+      document.getElementById('ai-questions-container').dataset.allCategories = "true";
+    } else {
+      displayAIQuestions(allQuestions, null, topic);
+      document.getElementById('ai-questions-container').dataset.allCategories = "true";
+    }
+  } catch (error) {
+    console.error('خطأ في توليد الأسئلة:', error);
+    alert('حدث خطأ أثناء توليد الأسئلة: ' + error.message);
+  } finally {
+    document.getElementById('ai-loading').classList.add('hidden');
+  }
+}

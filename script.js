@@ -101,14 +101,13 @@ const awardTeam1Btn = document.getElementById('award-team1');
 const awardTeam2Btn = document.getElementById('award-team2');
 const awardPointsElements = document.querySelectorAll('[id^="award-points"]');
 const questionMedia = document.getElementById('question-media');
-const switchTurnButton = document.getElementById('switch-turn'); // تعديل لاستخدام الزر الموجود في HTML
+const switchTurnButton = document.getElementById('switch-turn'); 
 
 
 // Variables for game state
 let currentQuestion = null;
 let timerInterval = null;
 let currentTeamTurn = 0; 
-// تم تعريف المتغير switchTurnButton بالفعل في السطر 84، لذلك قمت بإزالة التعريف المكرر هنا
 
 // Initialize the game
 function initGame() {
@@ -117,7 +116,7 @@ function initGame() {
   setupEventListeners();
   updateScores();
   updateTeamNames();
-  addSwitchTurnButton(); // Add the button to the DOM
+  addSwitchTurnButton(); 
 }
 
 // Update team names in the game
@@ -278,11 +277,14 @@ function openQuestion(topic, question) {
 
   updateTeamTurn();
 
+  // التأكد من عرض Modal في أعلى الصفحة
+  modal.scrollTop = 0;
+
   if (question.mediaType && question.mediaUrl) {
     const isDataUrl = question.mediaUrl.startsWith('data:');
     switch (question.mediaType) {
       case 'image':
-        questionMedia.innerHTML = `<img src="${question.mediaUrl}" alt="صورة السؤال" class="question-media-content">`;
+        questionMedia.innerHTML = `<img src="${question.mediaUrl}" alt="صورة السؤال" class="question-media-content" loading="eager">`;
         break;
       case 'video':
         if (isDataUrl) {
@@ -325,6 +327,8 @@ function openQuestion(topic, question) {
     }
     questionMedia.classList.add('has-media');
     questionText.classList.add('with-media');
+
+    // إضافة تأخير قبل تشغيل الوسائط
     setTimeout(() => {
       const mediaElement = questionMedia.querySelector('video, audio');
       if (mediaElement) {
@@ -332,14 +336,24 @@ function openQuestion(topic, question) {
           console.log('Auto-play prevented:', e);
         });
       }
-    }, 1000);
+
+      // التأكد من أن المحتوى المرئي لا يتجاوز حدود الصفحة
+      setTimeout(() => {
+        const modalContent = document.querySelector('.modal-content');
+        if (modalContent) {
+          modalContent.scrollTop = 0;
+        }
+      }, 100);
+    }, 500);
   } else {
     questionMedia.classList.remove('has-media');
     questionText.classList.remove('with-media');
   }
+
   awardPointsElements.forEach(el => {
     el.textContent = question.points;
   });
+
   modal.style.display = 'block';
   startTimer();
   showAnswerBtn.disabled = false;

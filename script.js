@@ -447,5 +447,23 @@ function addSwitchTurnButton() {
   }
 }
 
+// إظهار وإخفاء شاشة البداية
+function handleSplashScreen() {
+  const splashScreen = document.getElementById('splash-screen');
+  
+  // عرض شاشة البداية لمدة 3 ثوانٍ ثم إخفاؤها
+  setTimeout(() => {
+    if (splashScreen) {
+      splashScreen.style.opacity = '0';
+      setTimeout(() => {
+        splashScreen.style.display = 'none';
+      }, 500); // إخفاء العنصر بعد انتهاء التلاشي
+    }
+  }, 3000); // 3 ثوانٍ
+}
+
 // Initialize when page loads
-window.addEventListener('DOMContentLoaded', initGame);
+window.addEventListener('DOMContentLoaded', () => {
+  handleSplashScreen();
+  initGame();
+});

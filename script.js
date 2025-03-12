@@ -15,19 +15,6 @@ let gameData = {
       ]
     },
     {
-      id: 7,
-      title: "أسئلة ثقافية",
-      image: "", 
-      questions: [
-        { points: 200, text: "من كم لون يتكون قوس قزح؟", answer: "7 ألوان", answered: false },
-        { points: 200, text: "كم عدد أحرف اللغة الإنجليزية؟", answer: "26 حرفاً", answered: false },
-        { points: 400, text: "ما هو أصل جبنة البارميزان؟", answer: "إيطاليا", answered: false },
-        { points: 400, text: "ما هي أكبر هضبة في العالم؟", answer: "هضبة التبت", answered: false },
-        { points: 600, text: "من هي أول امرأة فازت بجائزة نوبل؟", answer: "ماري كوري", answered: false },
-        { points: 600, text: "أين تم افتتاح أول بنك للدم في العالم؟", answer: "في مدينة نيويورك، عام 1940م", answered: false }
-      ]
-    },
-    {
       id: 2,
       title: "أهل البر",
       image: "", 
@@ -90,32 +77,6 @@ let gameData = {
         { points: 400, text: "ما هو المضيق الذي يفصل بين آسيا وأمريكا الشمالية؟", answer: "مضيق بيرنغ", answered: false },
         { points: 600, text: "ما هي الدولة التي لديها أكبر عدد من الحدود البرية مع دول أخرى؟", answer: "الصين وروسيا (لكل منهما 14 دولة مجاورة)", answered: false },
         { points: 600, text: "ما هي الدولة الوحيدة في العالم التي تقع داخل دولة أخرى؟", answer: "الفاتيكان (داخل إيطاليا)", answered: false }
-      ]
-    },
-    {
-      id: 8,
-      title: "أسئلة جغرافية",
-      image: "", 
-      questions: [
-        { points: 200, text: "ما هو أعلى جبل في العالم؟", answer: "جبل إيفرست", answered: false },
-        { points: 200, text: "ما هي عاصمة إثيوبيا؟", answer: "أديس أبابا", answered: false },
-        { points: 400, text: "ما هي أكبر بحيرة في العالم؟", answer: "بُحيرة قزوين حسب المساحة السطحية", answered: false },
-        { points: 400, text: "ما هي أعلى شلالات العالم؟", answer: "شلالات آنجل", answered: false },
-        { points: 600, text: "ما هي أكبر دولة في العالم من حيث المساحة؟", answer: "روسيا", answered: false },
-        { points: 600, text: "ما هو البحر الذي يفصل بين دولتي تركيا واليونان؟", answer: "بحر إيجه", answered: false }
-      ]
-    },
-    {
-      id: 9,
-      title: "أسئلة علمية",
-      image: "", 
-      questions: [
-        { points: 200, text: "ماذا يُسمى كوكب المريخ؟", answer: "الكوكب الأحمر", answered: false },
-        { points: 200, text: "ما هو الغاز المشهور بغاز الضحك؟", answer: "أكسيد النيتروس", answered: false },
-        { points: 400, text: "من هو مُخترع المصباح الكهربائي؟", answer: "توماس أديسون", answered: false },
-        { points: 400, text: "ما هو عدد كواكب المجموعة الشمسية؟", answer: "8 كواكب", answered: false },
-        { points: 600, text: "ما هو شكل مجرة درب التبانة؟", answer: "حلزوني", answered: false },
-        { points: 600, text: "ما الغاز الذي يمتص الأشعة فوق البنفسجية في الغلاف الجوي؟", answer: "غاز الأوزون", answered: false }
       ]
     }
   ],
